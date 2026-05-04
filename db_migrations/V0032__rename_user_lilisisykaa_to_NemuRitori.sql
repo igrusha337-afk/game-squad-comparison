@@ -1,0 +1,1 @@
+UPDATE t_p63666683_game_squad_compariso.users SET username = 'NemuRitori' WHERE username = 'lilisisykaa@mail.ru';
