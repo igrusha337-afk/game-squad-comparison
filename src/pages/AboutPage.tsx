@@ -327,57 +327,72 @@ export default function AboutPage() {
           </div>
         </Card>
 
-        {/* Характеристики */}
+        {/* Команда и благодарности */}
         <Card>
           <SectionHeader
-            icon="BarChart3"
-            title="Характеристики"
-            subtitle="Что стоит за цифрами каждой карточки"
+            icon="Users"
+            title="Команда"
+            subtitle="Те, кто стоит за проектом"
           />
+          <Paragraph className="mb-6">
+            Сайт разработан игровым сообществом{' '}
+            <span style={{ color: 'hsl(42 76% 68%)', fontWeight: 700 }}>ASGARD Team</span>.
+            Мы создали этот инструмент для всех, кто хочет глубже понимать игру и
+            принимать взвешенные тактические решения.
+          </Paragraph>
+
+          <div
+            className="h-px mb-6"
+            style={{ background: 'linear-gradient(90deg, transparent, hsl(42 76% 58% / 0.3) 50%, transparent)' }}
+          />
+
+          <div
+            className="uppercase mb-4"
+            style={{
+              fontFamily: 'Manrope, sans-serif',
+              fontSize: '0.68rem',
+              fontWeight: 700,
+              letterSpacing: '0.25em',
+              color: 'hsl(42 50% 54%)',
+            }}
+          >
+            ◆ Особая благодарность
+          </div>
+
           <div className="grid sm:grid-cols-2 gap-3">
             {[
-              { stat: 'Численность', desc: 'Сколько бойцов в строю — основа устойчивости роты.' },
-              { stat: 'Лидерство',   desc: 'Стоимость найма и содержания отряда в войске.' },
-              { stat: 'Скорость',    desc: 'Как быстро отряд перемещается по полю боя.' },
-              { stat: 'Атака',       desc: 'Урон в ближней сече — рубящий, колющий, дробящий.' },
-              { stat: 'Защита',      desc: 'Сопротивление трём видам урона и прочность доспеха.' },
-              { stat: 'Пробитие',    desc: 'Способность обойти броню противника.' },
-              { stat: 'Дальность',   desc: 'Для стрелков и осадных — расстояние атаки.' },
-              { stat: 'Блок',        desc: 'Умение щитом или оружием отражать удары.' },
-              { stat: 'Боезапас',    desc: 'Сколько снарядов у отряда при себе.' },
+              { nick: 'Ник_1', role: 'за помощь в тестировании' },
+              { nick: 'Ник_2', role: 'за помощь в тестировании' },
+              { nick: 'Ник_3', role: 'за помощь в наполнении данными' },
+              { nick: 'Ник_4', role: 'за помощь в наполнении данными' },
+              { nick: 'Ник_5', role: 'за ценные советы и обратную связь' },
+              { nick: 'Ник_6', role: 'за ценные советы и обратную связь' },
             ].map(item => (
               <div
-                key={item.stat}
-                className="flex gap-3 p-3 rounded-lg"
+                key={item.nick}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl"
                 style={{
                   background: 'hsl(222 16% 10%)',
-                  border: '1px solid hsl(222 14% 18%)',
+                  border: '1px solid hsl(42 76% 50% / 0.15)',
                 }}
               >
-                <span
-                  className="uppercase shrink-0"
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
                   style={{
-                    fontFamily: 'Manrope, sans-serif',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    letterSpacing: '0.12em',
-                    color: 'hsl(42 76% 64%)',
-                    width: '7rem',
-                    paddingTop: '2px',
+                    background: 'linear-gradient(135deg, hsl(42 76% 50% / 0.2), hsl(30 64% 36% / 0.1))',
+                    border: '1px solid hsl(42 76% 58% / 0.3)',
                   }}
                 >
-                  {item.stat}
-                </span>
-                <span
-                  style={{
-                    fontFamily: 'Manrope, sans-serif',
-                    fontSize: '0.86rem',
-                    color: 'hsl(222 8% 70%)',
-                    lineHeight: 1.45,
-                  }}
-                >
-                  {item.desc}
-                </span>
+                  <Icon name="Sword" size={14} style={{ color: 'hsl(42 76% 64%)' }} />
+                </div>
+                <div>
+                  <div style={{ fontFamily: 'Manrope, sans-serif', fontSize: '0.9rem', fontWeight: 700, color: 'hsl(38 24% 92%)' }}>
+                    {item.nick}
+                  </div>
+                  <div style={{ fontFamily: 'Manrope, sans-serif', fontSize: '0.76rem', color: 'hsl(222 8% 54%)' }}>
+                    {item.role}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
