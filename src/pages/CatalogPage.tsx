@@ -209,7 +209,7 @@ export default function CatalogPage({ onSelectUnit, onGoGuides }: CatalogPagePro
                 }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'hsl(42 76% 50% / 0.18)'; e.currentTarget.style.borderColor = 'hsl(42 76% 50% / 0.6)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'hsl(42 76% 50% / 0.1)'; e.currentTarget.style.borderColor = 'hsl(42 76% 50% / 0.35)'; }}
-              >Гайд по игре Отряды/Экономика и многое другое</button>
+              >Гайды по игре - Отряды/Экономика и многое другое</button>
             </div>
           )}
         </div>
