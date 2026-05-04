@@ -32,14 +32,14 @@ def get_session_user(session_id, conn):
         return None
     with conn.cursor() as cur:
         cur.execute(
-            f"SELECT u.id, u.username, u.email, u.is_admin, u.avatar_url, u.bio, u.cover_url "
+            f"SELECT u.id, u.username, u.email, u.is_admin, u.avatar_url, u.bio, u.cover_url, u.house_id, u.house_name "
             f"FROM {SCHEMA}.sessions s JOIN {SCHEMA}.users u ON u.id = s.user_id "
             f"WHERE s.id = %s AND s.expires_at > now()",
             (session_id,)
         )
         row = cur.fetchone()
         if row:
-            return {'id': row[0], 'username': row[1], 'email': row[2], 'is_admin': row[3], 'avatar_url': row[4], 'bio': row[5], 'cover_url': row[6]}
+            return {'id': row[0], 'username': row[1], 'email': row[2], 'is_admin': row[3], 'avatar_url': row[4], 'bio': row[5], 'cover_url': row[6], 'house_id': row[7], 'house_name': row[8] or ''}
     return None
 
 def upload_image(file_data, content_type, folder):
@@ -81,7 +81,7 @@ def handler(event: dict, context) -> dict:
 
         with conn.cursor() as cur:
             cur.execute(
-                f"SELECT id, username, is_admin, avatar_url, bio, created_at, cover_url "
+                f"SELECT id, username, is_admin, avatar_url, bio, created_at, cover_url, house_id, house_name "
                 f"FROM {SCHEMA}.users WHERE id = %s",
                 (int(user_id),)
             )
@@ -92,6 +92,7 @@ def handler(event: dict, context) -> dict:
         return ok({'user': {
             'id': row[0], 'username': row[1], 'is_admin': row[2],
             'avatar_url': row[3], 'bio': row[4], 'created_at': row[5], 'cover_url': row[6],
+            'house_id': row[7], 'house_name': row[8] or '',
         }})
 
     # POST

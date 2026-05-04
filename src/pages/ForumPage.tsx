@@ -7,7 +7,7 @@ import Icon from '@/components/ui/icon';
 
 interface Topic {
   id: number; title: string; content: string;
-  author_id: number; author: string; author_avatar?: string;
+  author_id: number; author: string; author_avatar?: string; author_house_name?: string;
   views: number; is_pinned: boolean; is_locked: boolean;
   created_at: string; updated_at: string; post_count: number;
   likes: number; dislikes: number; user_vote: number | null;
@@ -188,7 +188,9 @@ export default function ForumPage({ onOpenTopic, onOpenProfile }: ForumPageProps
                   </h3>
                   <div className="flex items-center gap-3 text-[11px] mt-0.5" style={{ color: 'hsl(222 8% 52%)' }}>
                     <button className="font-medium hover:text-foreground transition-colors"
-                      onClick={e => { e.stopPropagation(); onOpenProfile?.(t.author_id); }}>{t.author}</button>
+                      onClick={e => { e.stopPropagation(); onOpenProfile?.(t.author_id); }}>
+                      {t.author}{t.author_house_name && <span style={{ color: 'hsl(42 76% 58%)' }}> [{t.author_house_name}]</span>}
+                    </button>
                     <span>{timeAgo(t.created_at)}</span>
                   </div>
                 </div>

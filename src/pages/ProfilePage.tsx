@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { profileApi } from '@/lib/api';
+import { profileApi, housesApi } from '@/lib/api';
 import UserAvatar from '@/components/UserAvatar';
 import Icon from '@/components/ui/icon';
 
@@ -31,6 +31,41 @@ export default function ProfilePage({ onOpenMessages }: Props) {
   const [coverFile, setCoverFile] = useState<{ data: string; type: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const coverRef = useRef<HTMLInputElement>(null);
+
+  // Дома
+  const [allHouses, setAllHouses] = useState<{ id: number; name: string; server: string }[]>([]);
+  const [joiningHouse, setJoiningHouse] = useState(false);
+  const [leavingHouse, setLeavingHouse] = useState(false);
+
+  const loadHouses = useCallback(async () => {
+    try {
+      const d = await housesApi.list();
+      setAllHouses((d.houses || []).map((h: { id: number; name: string; server: string }) => ({ id: h.id, name: h.name, server: h.server })));
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => { loadHouses(); }, [loadHouses]);
+
+  const handleJoinHouse = async (houseId: number, houseName: string) => {
+    setJoiningHouse(true);
+    try {
+      await housesApi.join(houseId);
+      updateUser({ house_id: houseId, house_name: houseName });
+    } finally {
+      setJoiningHouse(false);
+    }
+  };
+
+  const handleLeaveHouse = async () => {
+    if (!confirm('Покинуть дом?')) return;
+    setLeavingHouse(true);
+    try {
+      await housesApi.leave();
+      updateUser({ house_id: null, house_name: '' });
+    } finally {
+      setLeavingHouse(false);
+    }
+  };
 
   if (authLoading) return null;
   if (!user) return (
@@ -199,6 +234,54 @@ export default function ProfilePage({ onOpenMessages }: Props) {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Дом CB */}
+      <div className="rounded-2xl p-6" style={{ background: 'hsl(222 18% 9%)', border: '1px solid #c9a84c22' }}>
+        <div className="text-xs uppercase tracking-widest mb-4" style={{ color: '#c9a84c88', fontFamily: 'Manrope, sans-serif' }}>Дом CB</div>
+        {user.house_name ? (
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'hsl(42 76% 50% / 0.15)', border: '1px solid hsl(42 76% 50% / 0.3)' }}>
+                <Icon name="Shield" size={15} style={{ color: 'hsl(42 76% 62%)' }} />
+              </div>
+              <span className="font-semibold" style={{ color: 'hsl(42 76% 68%)', fontFamily: 'Manrope, sans-serif', fontSize: '1rem' }}>
+                [{user.house_name}]
+              </span>
+            </div>
+            <button onClick={handleLeaveHouse} disabled={leavingHouse}
+              className="text-xs px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
+              style={{ border: '1px solid hsl(222 14% 22%)', color: 'hsl(222 8% 54%)', fontFamily: 'Manrope, sans-serif' }}>
+              {leavingHouse ? 'Покидаю...' : 'Покинуть'}
+            </button>
+          </div>
+        ) : (
+          <div>
+            <p className="text-sm mb-3" style={{ color: '#666', fontFamily: 'Manrope, sans-serif' }}>
+              Выберите дом из списка, чтобы вступить в него:
+            </p>
+            {allHouses.length === 0 ? (
+              <p className="text-sm" style={{ color: '#555', fontFamily: 'Manrope, sans-serif' }}>Домов пока нет</p>
+            ) : (
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {allHouses.map(h => (
+                  <div key={h.id} className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl"
+                    style={{ background: 'hsl(222 20% 12%)', border: '1px solid hsl(222 14% 20%)' }}>
+                    <div>
+                      <div className="text-sm font-semibold" style={{ color: 'hsl(38 18% 90%)', fontFamily: 'Manrope, sans-serif' }}>{h.name}</div>
+                      {h.server && <div className="text-[11px]" style={{ color: 'hsl(222 8% 50%)', fontFamily: 'Manrope, sans-serif' }}>{h.server}</div>}
+                    </div>
+                    <button onClick={() => handleJoinHouse(h.id, h.name)} disabled={joiningHouse}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
+                      style={{ background: 'hsl(42 76% 50% / 0.15)', border: '1px solid hsl(42 76% 50% / 0.3)', color: 'hsl(42 76% 68%)', fontFamily: 'Manrope, sans-serif' }}>
+                      <Icon name="UserPlus" size={11} /> Вступить
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Ошибка */}

@@ -17,14 +17,17 @@ import PublicProfilePage from './PublicProfilePage';
 import MessagesPage from './MessagesPage';
 import GuidesPage from './GuidesPage';
 import GuideDetailPage from './GuideDetailPage';
+import HousesPage from './HousesPage';
+import HouseDetailPage from './HouseDetailPage';
 import NotificationBell from '@/components/NotificationBell';
 
-type Page = 'catalog' | 'compare' | 'treaties' | 'forum' | 'guides' | 'game' | 'about' | 'auth' | 'admin' | 'profile' | 'messages';
+type Page = 'catalog' | 'compare' | 'treaties' | 'houses' | 'forum' | 'guides' | 'game' | 'about' | 'auth' | 'admin' | 'profile' | 'messages';
 
 const NAV_ITEMS: Array<{ id: Page; label: string; icon: string; adminOnly?: boolean; authOnly?: boolean }> = [
   { id: 'catalog',  label: 'Каталог',    icon: 'LayoutGrid' },
   { id: 'compare',  label: 'Сравнение',  icon: 'Swords' },
   { id: 'treaties', label: 'Трактаты',   icon: 'ScrollText' },
+  { id: 'houses',   label: 'Дома CB',    icon: 'Shield' },
   { id: 'forum',    label: 'Форум',      icon: 'MessageSquare' },
   { id: 'guides',   label: 'Гайды',      icon: 'BookOpen' },
   { id: 'game',     label: 'Неадекватная игра', icon: 'Gamepad2' },
@@ -112,6 +115,7 @@ export default function Index() {
   const [publicProfileUserId, setPublicProfileUserId] = useState<number | null>(null);
   const [messagesWithUser, setMessagesWithUser] = useState<{ id: number; username: string } | null>(null);
   const [guideDetailId, setGuideDetailId] = useState<number | null>(null);
+  const [houseDetailId, setHouseDetailId] = useState<number | null>(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [appliedTreaties, setAppliedTreaties] = useState<Record<string, string[]>>(() => {
     try {
@@ -188,6 +192,7 @@ export default function Index() {
     setForumTopicId(null);
     setPublicProfileUserId(null);
     setGuideDetailId(null);
+    setHouseDetailId(null);
     setMobileMenuOpen(false);
   };
 
@@ -532,6 +537,9 @@ export default function Index() {
                     )}
                     <span style={{ fontFamily: '"Manrope", sans-serif', fontSize: '0.82rem', fontWeight: 600, color: 'hsl(38 24% 92%)' }}>
                       {user.username}
+                      {user.house_name && (
+                        <span style={{ color: 'hsl(42 76% 58%)', fontWeight: 500 }}> [{user.house_name}]</span>
+                      )}
                     </span>
                     {user.is_admin && (
                       <span style={{ fontSize: '0.58rem', color: 'hsl(355 72% 68%)', fontWeight: 700 }}>✦</span>
@@ -592,6 +600,19 @@ export default function Index() {
               onApply={handleApplyTreaty}
               onRemove={handleRemoveTreaty}
             />
+          ) : page === 'houses' ? (
+            houseDetailId ? (
+              <HouseDetailPage
+                houseId={houseDetailId}
+                onBack={() => setHouseDetailId(null)}
+                onOpenProfile={openPublicProfile}
+              />
+            ) : (
+              <HousesPage
+                onOpenHouse={id => { setHouseDetailId(id); mainRef.current?.scrollTo({ top: 0, behavior: 'instant' }); }}
+                onOpenProfile={openPublicProfile}
+              />
+            )
           ) : page === 'forum' ? (
             forumTopicId ? (
               <TopicPage

@@ -12,6 +12,8 @@ interface PublicUser {
   cover_url: string;
   bio: string;
   created_at: string;
+  house_id?: number | null;
+  house_name?: string;
 }
 
 interface Props {
@@ -80,10 +82,15 @@ export default function PublicProfilePage({ userId, onBack, onOpenMessages }: Pr
 
           {/* Имя и роль */}
           <div className="rounded-2xl p-6" style={{ background: 'hsl(222 18% 9%)', border: '1px solid #c9a84c22' }}>
-            <div className="flex items-center gap-3 mb-1">
+            <div className="flex items-center gap-3 mb-1 flex-wrap">
               <h1 className="text-2xl font-bold" style={{ fontFamily: '"Cinzel Decorative", serif', color: '#f0c060' }}>
                 {profile.username}
               </h1>
+              {profile.house_name && (
+                <span className="text-sm font-semibold" style={{ color: 'hsl(42 76% 58%)', fontFamily: 'Manrope, sans-serif' }}>
+                  [{profile.house_name}]
+                </span>
+              )}
               {profile.is_admin && (
                 <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
                   style={{ background: '#e0525222', border: '1px solid #e0525244', color: '#e05252', fontFamily: 'Manrope, sans-serif' }}>

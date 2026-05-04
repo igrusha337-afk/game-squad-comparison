@@ -15,6 +15,7 @@ const URLS = {
   profileApi: 'https://functions.poehali.dev/d236c13e-b58c-46b9-b37c-4f4fab797124',
   messagesApi: 'https://functions.poehali.dev/9c322351-b8b6-4513-a2d3-b3658d79f8e0',
   guidesApi: 'https://functions.poehali.dev/7c42af4f-b3f5-4363-b971-9823b6d05f6c',
+  housesApi: 'https://functions.poehali.dev/b0631df5-a77f-4c46-8f6b-670ee8f4958c',
 };
 
 function getSessionId(): string {
@@ -199,6 +200,20 @@ export const guidesApi = {
     request(URLS.guidesApi, { method: 'POST', body: JSON.stringify({ action: 'vote', guide_id, vote }) }),
   uploadFile: (file_data: string, content_type: string, filename: string) =>
     request(URLS.guidesApi, { method: 'POST', body: JSON.stringify({ action: 'upload_file', file_data, content_type, filename }) }),
+};
+
+// Houses
+export const housesApi = {
+  list: () => request(URLS.housesApi),
+  getHouse: (id: number) => request(`${URLS.housesApi}?action=house&id=${id}`),
+  create: (data: { name: string; short_desc: string; server: string; emblem_file?: string; emblem_content_type?: string }) =>
+    request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'create_house', ...data }) }),
+  update: (house_id: number, data: { description?: string; video_file?: string; video_content_type?: string; photo_file?: string; photo_content_type?: string }) =>
+    request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'update_house', house_id, ...data }) }),
+  join: (house_id: number) =>
+    request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'join_house', house_id }) }),
+  leave: () =>
+    request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'leave_house' }) }),
 };
 
 // Treaties

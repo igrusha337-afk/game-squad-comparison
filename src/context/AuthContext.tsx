@@ -9,6 +9,8 @@ interface User {
   avatar_url?: string;
   cover_url?: string;
   bio?: string;
+  house_id?: number | null;
+  house_name?: string;
 }
 
 interface AuthContextType {

@@ -7,7 +7,7 @@ import Icon from '@/components/ui/icon';
 
 interface Topic {
   id: number; title: string; content: string;
-  author_id: number; author: string; author_avatar?: string;
+  author_id: number; author: string; author_avatar?: string; author_house_name?: string;
   views: number; is_pinned: boolean; is_locked: boolean;
   created_at: string; updated_at: string; post_count: number;
 }
@@ -15,6 +15,7 @@ interface Post {
   id: number; topic_id: number; content: string;
   author_id: number; author: string;
   is_hidden: boolean; created_at: string; updated_at: string;
+  author_avatar?: string; author_house_name?: string;
 }
 
 function timeAgo(iso: string) {
@@ -166,10 +167,10 @@ export default function TopicPage({ topicId, onBack, onOpenProfile, onOpenMessag
                 )}
               </div>
               <h1 className="text-xl font-semibold text-foreground leading-snug">{topic.title}</h1>
-              <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-1">
+              <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-1 flex-wrap">
                 <button className="font-medium hover:text-foreground transition-colors"
                   onClick={() => onOpenProfile?.(topic.author_id)}>
-                  {topic.author}
+                  {topic.author}{topic.author_house_name && <span style={{ color: 'hsl(42 76% 58%)' }}> [{topic.author_house_name}]</span>}
                 </button>
                 <span className="flex items-center gap-1"><Icon name="Clock" size={10} /> {timeAgo(topic.created_at)}</span>
                 <span className="flex items-center gap-1"><Icon name="Eye" size={10} /> {topic.views} просмотров</span>
@@ -228,16 +229,15 @@ export default function TopicPage({ topicId, onBack, onOpenProfile, onOpenMessag
             <div key={post.id}
               className="bg-card border border-border rounded-sm p-4 group">
               <div className="flex items-start gap-3">
-                {/* Аватар-заглушка */}
-                <div className="w-8 h-8 rounded-sm bg-muted flex items-center justify-center flex-shrink-0 text-xs font-semibold text-muted-foreground">
-                  {post.author[0]?.toUpperCase()}
+                <div className="flex-shrink-0 cursor-pointer" onClick={() => onOpenProfile?.(post.author_id)}>
+                  <UserAvatar username={post.author} avatarUrl={post.author_avatar} size={32} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <button className="text-xs font-medium text-foreground hover:text-primary transition-colors"
                         onClick={() => onOpenProfile?.(post.author_id)}>
-                        {post.author}
+                        {post.author}{post.author_house_name && <span style={{ color: 'hsl(42 76% 58%)' }}> [{post.author_house_name}]</span>}
                       </button>
                       <span className="text-[10px] text-muted-foreground">{timeAgo(post.created_at)}</span>
                       {post.updated_at !== post.created_at && (

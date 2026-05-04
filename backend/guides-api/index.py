@@ -37,6 +37,20 @@ def resp(data, status=200):
     }
 
 
+def award_and_refresh(conn, user_id, action_type, points, ref_id=None):
+    with conn.cursor() as cur:
+        cur.execute(
+            f"INSERT INTO {SCHEMA}.activity_points (user_id, action_type, points, ref_id) VALUES (%s, %s, %s, %s)",
+            (user_id, action_type, points, ref_id)
+        )
+        cur.execute(
+            f"""UPDATE {SCHEMA}.houses SET rating_points = (
+                SELECT COALESCE(SUM(ap.points), 0) FROM {SCHEMA}.activity_points ap
+                JOIN {SCHEMA}.users u ON u.id = ap.user_id WHERE u.house_id = houses.id
+            )"""
+        )
+
+
 def get_user(session_id, conn):
     if not session_id:
         return None
@@ -244,7 +258,8 @@ def handler(event: dict, context) -> dict:
                 (title, content, user['id'], guide_avatar_url)
             )
             guide_id = cur.fetchone()[0]
-            conn.commit()
+        award_and_refresh(conn, user['id'], 'create_guide', 15, guide_id)
+        conn.commit()
         conn.close()
         return resp({'message': 'Гайд создан', 'guide_id': guide_id})
 
@@ -294,14 +309,16 @@ def handler(event: dict, context) -> dict:
             conn.close()
             return resp({'error': 'vote должен быть 1 или -1'}, 400)
         with conn.cursor() as cur:
-            # Проверяем существование гайда
+            # Проверяем существование гайда и получаем автора
             cur.execute(
-                f"SELECT id FROM {SCHEMA}.guides WHERE id = %s",
+                f"SELECT id, author_id FROM {SCHEMA}.guides WHERE id = %s",
                 (guide_id,)
             )
-            if not cur.fetchone():
+            guide_row = cur.fetchone()
+            if not guide_row:
                 conn.close()
                 return resp({'error': 'Гайд не найден'}, 404)
+            guide_author_id = guide_row[1]
             # Проверяем текущий голос
             cur.execute(
                 f"SELECT vote FROM {SCHEMA}.guide_votes WHERE guide_id = %s AND user_id = %s",
@@ -315,6 +332,9 @@ def handler(event: dict, context) -> dict:
                     (guide_id, user['id'], vote)
                 )
                 result = 'voted'
+                # Лайк даёт 5 баллов автору гайда
+                if vote == 1 and guide_author_id != user['id']:
+                    award_and_refresh(conn, guide_author_id, 'received_like_guide', 5, guide_id)
             elif existing[0] == vote:
                 # Тот же голос — отменяем (обнуляем через UPDATE до 0 невозможно без изменения схемы,
                 # поэтому помечаем vote=0 как признак отмены, либо просто удаляем логически через vote=0)
