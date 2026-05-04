@@ -100,6 +100,9 @@ export const forumApi = {
     request(URLS.forum, { method: 'POST', body: JSON.stringify({ action: 'vote_topic', topic_id, vote }) }),
   getNotifications: () => request(`${URLS.forum}?action=notifications`),
   readNotifications: () => request(URLS.forum, { method: 'POST', body: JSON.stringify({ action: 'read_notifications' }) }),
+  getPendingTopics: () => request(`${URLS.forum}?action=pending_topics`),
+  publishTopic: (topic_id: number, approve: boolean) =>
+    request(URLS.forum, { method: 'POST', body: JSON.stringify({ action: 'publish_topic', topic_id, approve }) }),
 };
 
 // Formations
@@ -200,6 +203,9 @@ export const guidesApi = {
     request(URLS.guidesApi, { method: 'POST', body: JSON.stringify({ action: 'vote', guide_id, vote }) }),
   uploadFile: (file_data: string, content_type: string, filename: string) =>
     request(URLS.guidesApi, { method: 'POST', body: JSON.stringify({ action: 'upload_file', file_data, content_type, filename }) }),
+  getPendingGuides: () => request(`${URLS.guidesApi}?action=pending_guides`),
+  publishGuide: (guide_id: number, approve: boolean) =>
+    request(URLS.guidesApi, { method: 'POST', body: JSON.stringify({ action: 'publish_guide', guide_id, approve }) }),
 };
 
 // Houses

@@ -154,6 +154,7 @@ def handler(event: dict, context) -> dict:
                         FROM {SCHEMA}.guides g
                         JOIN {SCHEMA}.users u ON u.id = g.author_id
                         LEFT JOIN {SCHEMA}.guide_votes v ON v.guide_id = g.id
+                        WHERE g.is_published = true
                         GROUP BY g.id, u.username, u.avatar_url
                         ORDER BY g.created_at DESC""",
                     (user_id,)
@@ -168,6 +169,7 @@ def handler(event: dict, context) -> dict:
                         FROM {SCHEMA}.guides g
                         JOIN {SCHEMA}.users u ON u.id = g.author_id
                         LEFT JOIN {SCHEMA}.guide_votes v ON v.guide_id = g.id
+                        WHERE g.is_published = true
                         GROUP BY g.id, u.username, u.avatar_url
                         ORDER BY g.created_at DESC"""
                 )
@@ -258,10 +260,9 @@ def handler(event: dict, context) -> dict:
                 (title, content, user['id'], guide_avatar_url)
             )
             guide_id = cur.fetchone()[0]
-        award_and_refresh(conn, user['id'], 'create_guide', 15, guide_id)
         conn.commit()
         conn.close()
-        return resp({'message': 'Гайд создан', 'guide_id': guide_id})
+        return resp({'message': 'pending', 'guide_id': guide_id})
 
     # ── POST: редактировать гайд ─────────────────────────────────────
     if action == 'update_guide':
@@ -408,6 +409,53 @@ def handler(event: dict, context) -> dict:
 
         conn.close()
         return resp({'url': cdn_url(unique_name)})
+
+    # ── GET: гайды на проверке (админ) ───────────────────────────────
+    if method == 'GET' and action == 'pending_guides':
+        if not user or not user['is_admin']:
+            conn.close()
+            return resp({'error': 'Нет прав'}, 403)
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""SELECT g.id, g.title, g.author_id, u.username, u.avatar_url,
+                           g.guide_avatar_url, g.views, g.created_at, g.updated_at,
+                           0 as likes, 0 as dislikes, NULL as user_vote
+                    FROM {SCHEMA}.guides g
+                    JOIN {SCHEMA}.users u ON u.id = g.author_id
+                    WHERE g.is_published = false
+                    ORDER BY g.created_at ASC"""
+            )
+            rows = cur.fetchall()
+        conn.close()
+        return resp({'guides': [fmt_guide(r) for r in rows]})
+
+    # ── POST: опубликовать / отклонить гайд (админ) ───────────────────
+    if action == 'publish_guide':
+        if not user['is_admin']:
+            conn.close()
+            return resp({'error': 'Нет прав'}, 403)
+        guide_id = int(body.get('guide_id', 0))
+        approve = bool(body.get('approve', True))
+        with conn.cursor() as cur:
+            if approve:
+                cur.execute(f"UPDATE {SCHEMA}.guides SET is_published = true WHERE id = %s RETURNING author_id", (guide_id,))
+                row = cur.fetchone()
+                if row:
+                    award_and_refresh(conn, row[0], 'create_guide', 15, guide_id)
+            else:
+                cur.execute(f"SELECT author_id, title FROM {SCHEMA}.guides WHERE id = %s", (guide_id,))
+                row = cur.fetchone()
+                if row:
+                    with conn.cursor() as nc:
+                        nc.execute(
+                            f"INSERT INTO {SCHEMA}.notifications (user_id, message) VALUES (%s, %s)",
+                            (row[0], f'Ваш гайд «{row[1][:60]}» был отклонён модератором')
+                        )
+                cur.execute(f"DELETE FROM {SCHEMA}.guide_votes WHERE guide_id = %s", (guide_id,))
+                cur.execute(f"DELETE FROM {SCHEMA}.guides WHERE id = %s", (guide_id,))
+            conn.commit()
+        conn.close()
+        return resp({'message': 'ok'})
 
     conn.close()
     return resp({'error': 'Неизвестное действие'}, 400)

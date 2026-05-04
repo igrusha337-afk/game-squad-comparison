@@ -52,6 +52,7 @@ export default function GuidesPage({ onOpenGuide, onOpenProfile }: Props) {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [pendingNotice, setPendingNotice] = useState(false);
   const avatarRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -83,10 +84,10 @@ export default function GuidesPage({ onOpenGuide, onOpenProfile }: Props) {
     try {
       const payload: Parameters<typeof guidesApi.create>[0] = { title: title.trim(), content };
       if (avatarFile) { payload.avatar_file = avatarFile.data; payload.avatar_content_type = avatarFile.type; }
-      const res = await guidesApi.create(payload);
+      await guidesApi.create(payload);
       setShowForm(false); setTitle(''); setContent(''); setAvatarFile(null); setAvatarPreview(null);
-      await load();
-      onOpenGuide(res.guide_id);
+      setPendingNotice(true);
+      setTimeout(() => setPendingNotice(false), 6000);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Ошибка');
     } finally {
@@ -120,6 +121,25 @@ export default function GuidesPage({ onOpenGuide, onOpenProfile }: Props) {
           </button>
         )}
       </div>
+
+      {/* Уведомление об отправке на проверку */}
+      {pendingNotice && (
+        <div className="mb-5 px-5 py-4 rounded-2xl flex items-start gap-3"
+          style={{ background: 'hsl(42 76% 50% / 0.1)', border: '1px solid hsl(42 76% 50% / 0.35)' }}>
+          <Icon name="Clock" size={18} style={{ color: 'hsl(42 76% 62%)', flexShrink: 0, marginTop: 1 }} />
+          <div>
+            <div className="font-semibold text-sm mb-0.5" style={{ color: 'hsl(42 76% 72%)', fontFamily: 'Manrope, sans-serif' }}>
+              Гайд отправлен на проверку
+            </div>
+            <div className="text-xs" style={{ color: 'hsl(42 40% 58%)', fontFamily: 'Manrope, sans-serif' }}>
+              Модератор рассмотрит его и опубликует в ближайшее время
+            </div>
+          </div>
+          <button onClick={() => setPendingNotice(false)} className="ml-auto" style={{ color: 'hsl(42 40% 52%)' }}>
+            <Icon name="X" size={14} />
+          </button>
+        </div>
+      )}
 
       {/* Форма создания — современный дизайн */}
       {showForm && (

@@ -148,6 +148,7 @@ def handler(event: dict, context) -> dict:
                         JOIN {SCHEMA}.users u ON u.id = t.author_id
                         LEFT JOIN {SCHEMA}.forum_posts p ON p.topic_id = t.id AND p.is_hidden = false
                         LEFT JOIN {SCHEMA}.forum_topic_votes v ON v.topic_id = t.id
+                        WHERE t.is_published = true
                         GROUP BY t.id, u.username, u.avatar_url, u.house_name
                         ORDER BY t.is_pinned DESC, t.updated_at DESC""",
                     (user_id,)
@@ -164,6 +165,7 @@ def handler(event: dict, context) -> dict:
                         JOIN {SCHEMA}.users u ON u.id = t.author_id
                         LEFT JOIN {SCHEMA}.forum_posts p ON p.topic_id = t.id AND p.is_hidden = false
                         LEFT JOIN {SCHEMA}.forum_topic_votes v ON v.topic_id = t.id
+                        WHERE t.is_published = true
                         GROUP BY t.id, u.username, u.avatar_url, u.house_name
                         ORDER BY t.is_pinned DESC, t.updated_at DESC"""
                 )
@@ -227,14 +229,13 @@ def handler(event: dict, context) -> dict:
                 return resp({'error': str(e)}, 400)
         with conn.cursor() as cur:
             cur.execute(
-                f"INSERT INTO {SCHEMA}.forum_topics (title, content, author_id, cover_url) VALUES (%s, %s, %s, %s) RETURNING id",
+                f"INSERT INTO {SCHEMA}.forum_topics (title, content, author_id, cover_url, is_published) VALUES (%s, %s, %s, %s, false) RETURNING id",
                 (title, content, user['id'], cover_url)
             )
             topic_id = cur.fetchone()[0]
-        award_and_refresh(conn, user['id'], 'create_topic', 10, topic_id)
         conn.commit()
         conn.close()
-        return resp({'message': 'Тема создана', 'topic_id': topic_id})
+        return resp({'message': 'pending', 'topic_id': topic_id})
 
     # ── GET: уведомления текущего пользователя ──────────────────────
     if method == 'GET' and action == 'notifications':
@@ -444,6 +445,58 @@ def handler(event: dict, context) -> dict:
             conn.commit()
         conn.close()
         return resp({'message': 'Тема удалена'})
+
+    # ── GET: список тем на проверке (админ) ──────────────────────────
+    if method == 'GET' and action == 'pending_topics':
+        if not user or not user['is_admin']:
+            conn.close()
+            return resp({'error': 'Нет прав'}, 403)
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""SELECT t.id, t.title, t.content, t.author_id, u.username,
+                           t.views, t.is_pinned, t.is_locked, t.created_at, t.updated_at,
+                           0 as post_count, u.avatar_url,
+                           0 as likes, 0 as dislikes, NULL as user_vote, u.house_name
+                    FROM {SCHEMA}.forum_topics t
+                    JOIN {SCHEMA}.users u ON u.id = t.author_id
+                    WHERE t.is_published = false
+                    ORDER BY t.created_at ASC"""
+            )
+            rows = cur.fetchall()
+        conn.close()
+        return resp({'topics': [fmt_topic(r) for r in rows]})
+
+    # ── POST: опубликовать / отклонить тему (админ) ───────────────────
+    if action == 'publish_topic':
+        if not user['is_admin']:
+            conn.close()
+            return resp({'error': 'Нет прав'}, 403)
+        topic_id = int(body.get('topic_id', 0))
+        approve = bool(body.get('approve', True))
+        with conn.cursor() as cur:
+            if approve:
+                cur.execute(f"UPDATE {SCHEMA}.forum_topics SET is_published = true WHERE id = %s RETURNING author_id", (topic_id,))
+                row = cur.fetchone()
+                if row:
+                    award_and_refresh(conn, row[0], 'create_topic', 10, topic_id)
+                    # Уведомление автору
+                    cur.execute(
+                        f"INSERT INTO {SCHEMA}.notifications (user_id, message, link_topic_id) VALUES (%s, %s, %s)",
+                        (row[0], 'Ваша тема опубликована!', topic_id)
+                    )
+            else:
+                cur.execute(f"SELECT author_id, title FROM {SCHEMA}.forum_topics WHERE id = %s", (topic_id,))
+                row = cur.fetchone()
+                if row:
+                    cur.execute(
+                        f"INSERT INTO {SCHEMA}.notifications (user_id, message) VALUES (%s, %s)",
+                        (row[0], f'Ваша тема «{row[1][:60]}» была отклонена модератором')
+                    )
+                cur.execute(f"DELETE FROM {SCHEMA}.forum_posts WHERE topic_id = %s", (topic_id,))
+                cur.execute(f"DELETE FROM {SCHEMA}.forum_topics WHERE id = %s", (topic_id,))
+            conn.commit()
+        conn.close()
+        return resp({'message': 'ok'})
 
     conn.close()
     return resp({'error': 'Неизвестное действие'}, 400)

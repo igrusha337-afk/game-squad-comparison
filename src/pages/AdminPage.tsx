@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { unitsApi, treatiesApi, seedApi, rolesApi, formationsApi, traitsApi, abilitiesApi, statsApi } from '@/lib/api';
+import { unitsApi, treatiesApi, seedApi, rolesApi, formationsApi, traitsApi, abilitiesApi, statsApi, forumApi, guidesApi } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useUnits, useTreaties, useRoles, useFormations, useTraits, useAbilities, UnitRoleDef, TraitDef, AbilityDef } from '@/hooks/useAppData';
 import Icon from '@/components/ui/icon';
@@ -11,7 +11,7 @@ import { StarPicker } from '@/components/StarRating';
 import GuideEditor from '@/components/GuideEditor';
 import { GuideBlock } from '@/data/types';
 
-type AdminTab = 'stats' | 'units' | 'treaties' | 'roles' | 'formations' | 'traits' | 'abilities';
+type AdminTab = 'stats' | 'units' | 'treaties' | 'roles' | 'formations' | 'traits' | 'abilities' | 'moderation';
 
 interface SiteStats {
   total_unique: number;
@@ -688,7 +688,41 @@ export default function AdminPage() {
       setStatsLoading(true);
       statsApi.getStats().then(data => setSiteStats(data)).catch(() => {}).finally(() => setStatsLoading(false));
     }
+    if (tab === 'moderation') {
+      loadPending();
+    }
   }, [tab]);
+
+  // ── Модерация публикаций ──────────────────────────────────────────
+  interface PendingTopic { id: number; title: string; content: string; author: string; author_id: number; created_at: string; }
+  interface PendingGuide { id: number; title: string; author: string; author_id: number; created_at: string; }
+  const [pendingTopics, setPendingTopics] = useState<PendingTopic[]>([]);
+  const [pendingGuides, setPendingGuides] = useState<PendingGuide[]>([]);
+  const [moderationLoading, setModerationLoading] = useState(false);
+  const [expandedTopic, setExpandedTopic] = useState<number | null>(null);
+
+  const loadPending = useCallback(async () => {
+    setModerationLoading(true);
+    try {
+      const [t, g] = await Promise.all([forumApi.getPendingTopics(), guidesApi.getPendingGuides()]);
+      setPendingTopics(t.topics || []);
+      setPendingGuides(g.guides || []);
+    } finally {
+      setModerationLoading(false);
+    }
+  }, []);
+
+  const handlePublishTopic = async (id: number, approve: boolean) => {
+    await forumApi.publishTopic(id, approve);
+    showToast(approve ? 'Тема опубликована' : 'Тема отклонена');
+    loadPending();
+  };
+
+  const handlePublishGuide = async (id: number, approve: boolean) => {
+    await guidesApi.publishGuide(id, approve);
+    showToast(approve ? 'Гайд опубликован' : 'Гайд отклонён');
+    loadPending();
+  };
 
   const handleSeed = async () => {
     setSeedLoading(true);
@@ -972,15 +1006,25 @@ export default function AdminPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b border-border flex-wrap">
-        {(['stats', 'units', 'treaties', 'roles', 'formations', 'traits', 'abilities'] as AdminTab[]).map(t => (
+        {(['stats', 'units', 'treaties', 'roles', 'formations', 'traits', 'abilities', 'moderation'] as AdminTab[]).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-4 py-2.5 text-sm transition-colors border-b-2 -mb-px ${
+            className={`px-4 py-2.5 text-sm transition-colors border-b-2 -mb-px flex items-center gap-1.5 ${
               tab === t ? 'border-primary text-primary font-medium' : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            {t === 'stats' ? 'Статистика' : t === 'units' ? 'Отряды' : t === 'treaties' ? 'Трактаты' : t === 'roles' ? 'Роли' : t === 'formations' ? 'Построения' : t === 'traits' ? 'Особенности' : 'Умения'}
+            {t === 'stats' ? 'Статистика' : t === 'units' ? 'Отряды' : t === 'treaties' ? 'Трактаты' : t === 'roles' ? 'Роли' : t === 'formations' ? 'Построения' : t === 'traits' ? 'Особенности' : t === 'abilities' ? 'Умения' : (
+              <span className="flex items-center gap-1.5">
+                Публикации
+                {(pendingTopics.length + pendingGuides.length) > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none"
+                    style={{ background: 'hsl(355 72% 50%)', color: 'white' }}>
+                    {pendingTopics.length + pendingGuides.length}
+                  </span>
+                )}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -1594,6 +1638,109 @@ export default function AdminPage() {
               <p className="text-sm text-muted-foreground text-center py-8">Умений пока нет</p>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Moderation Tab */}
+      {tab === 'moderation' && (
+        <div>
+          {moderationLoading ? (
+            <div className="py-12 text-center text-muted-foreground text-sm">Загрузка...</div>
+          ) : (pendingTopics.length + pendingGuides.length) === 0 ? (
+            <div className="py-16 text-center">
+              <Icon name="CheckCircle" size={40} className="mx-auto mb-3 opacity-20" />
+              <p className="text-sm text-muted-foreground">Нет публикаций на проверке</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Темы форума */}
+              {pendingTopics.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Icon name="MessageSquare" size={14} className="text-muted-foreground" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Темы форума ({pendingTopics.length})
+                    </span>
+                  </div>
+                  <div className="space-y-3">
+                    {pendingTopics.map(topic => (
+                      <div key={topic.id} className="bg-card border border-border rounded-sm overflow-hidden">
+                        <div className="p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-sm text-foreground mb-1">{topic.title}</div>
+                              <div className="text-xs text-muted-foreground mb-2">
+                                Автор: <span className="text-foreground">{topic.author}</span> · {new Date(topic.created_at).toLocaleDateString('ru')}
+                              </div>
+                              {expandedTopic === topic.id && (
+                                <div className="text-xs text-muted-foreground leading-relaxed mt-2 mb-3 max-h-40 overflow-y-auto"
+                                  dangerouslySetInnerHTML={{ __html: topic.content }} />
+                              )}
+                              <button onClick={() => setExpandedTopic(expandedTopic === topic.id ? null : topic.id)}
+                                className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+                                <Icon name={expandedTopic === topic.id ? 'ChevronUp' : 'ChevronDown'} size={11} />
+                                {expandedTopic === topic.id ? 'Свернуть' : 'Читать текст'}
+                              </button>
+                            </div>
+                            <div className="flex gap-2 flex-shrink-0">
+                              <button onClick={() => handlePublishTopic(topic.id, true)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-sm font-semibold transition-all"
+                                style={{ background: 'hsl(150 48% 40% / 0.15)', border: '1px solid hsl(150 48% 40% / 0.4)', color: 'hsl(150 48% 60%)' }}>
+                                <Icon name="Check" size={12} /> Одобрить
+                              </button>
+                              <button onClick={() => handlePublishTopic(topic.id, false)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-sm font-semibold transition-all"
+                                style={{ background: 'hsl(355 62% 40% / 0.15)', border: '1px solid hsl(355 62% 40% / 0.4)', color: 'hsl(355 72% 62%)' }}>
+                                <Icon name="X" size={12} /> Отклонить
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Гайды */}
+              {pendingGuides.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Icon name="BookOpen" size={14} className="text-muted-foreground" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Гайды ({pendingGuides.length})
+                    </span>
+                  </div>
+                  <div className="space-y-3">
+                    {pendingGuides.map(guide => (
+                      <div key={guide.id} className="bg-card border border-border rounded-sm p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm text-foreground mb-1">{guide.title}</div>
+                            <div className="text-xs text-muted-foreground">
+                              Автор: <span className="text-foreground">{guide.author}</span> · {new Date(guide.created_at).toLocaleDateString('ru')}
+                            </div>
+                          </div>
+                          <div className="flex gap-2 flex-shrink-0">
+                            <button onClick={() => handlePublishGuide(guide.id, true)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-sm font-semibold transition-all"
+                              style={{ background: 'hsl(150 48% 40% / 0.15)', border: '1px solid hsl(150 48% 40% / 0.4)', color: 'hsl(150 48% 60%)' }}>
+                              <Icon name="Check" size={12} /> Одобрить
+                            </button>
+                            <button onClick={() => handlePublishGuide(guide.id, false)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-sm font-semibold transition-all"
+                              style={{ background: 'hsl(355 62% 40% / 0.15)', border: '1px solid hsl(355 62% 40% / 0.4)', color: 'hsl(355 72% 62%)' }}>
+                              <Icon name="X" size={12} /> Отклонить
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

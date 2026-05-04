@@ -58,6 +58,8 @@ export default function ForumPage({ onOpenTopic, onOpenProfile }: ForumPageProps
 
   useEffect(() => { load(); }, [load]);
 
+  const [pendingNotice, setPendingNotice] = useState(false);
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) { setError('Укажите заголовок'); return; }
@@ -65,10 +67,10 @@ export default function ForumPage({ onOpenTopic, onOpenProfile }: ForumPageProps
     if (!stripped) { setError('Напишите содержимое темы'); return; }
     setSubmitting(true); setError('');
     try {
-      const res = await forumApi.createTopic(title.trim(), content);
+      await forumApi.createTopic(title.trim(), content);
       setShowForm(false); setTitle(''); setContent('');
-      await load();
-      onOpenTopic(res.topic_id);
+      setPendingNotice(true);
+      setTimeout(() => setPendingNotice(false), 6000);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Ошибка');
     } finally {
@@ -94,6 +96,25 @@ export default function ForumPage({ onOpenTopic, onOpenProfile }: ForumPageProps
           </button>
         )}
       </div>
+
+      {/* Уведомление об отправке на проверку */}
+      {pendingNotice && (
+        <div className="mb-5 px-5 py-4 rounded-2xl flex items-start gap-3"
+          style={{ background: 'hsl(42 76% 50% / 0.1)', border: '1px solid hsl(42 76% 50% / 0.35)' }}>
+          <Icon name="Clock" size={18} style={{ color: 'hsl(42 76% 62%)', flexShrink: 0, marginTop: 1 }} />
+          <div>
+            <div className="font-semibold text-sm mb-0.5" style={{ color: 'hsl(42 76% 72%)', fontFamily: 'Manrope, sans-serif' }}>
+              Тема отправлена на проверку
+            </div>
+            <div className="text-xs" style={{ color: 'hsl(42 40% 58%)', fontFamily: 'Manrope, sans-serif' }}>
+              Модератор рассмотрит её и опубликует в ближайшее время
+            </div>
+          </div>
+          <button onClick={() => setPendingNotice(false)} className="ml-auto" style={{ color: 'hsl(42 40% 52%)' }}>
+            <Icon name="X" size={14} />
+          </button>
+        </div>
+      )}
 
       {/* Форма создания темы — современный дизайн */}
       {showForm && (
