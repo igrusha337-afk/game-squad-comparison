@@ -14,15 +14,18 @@ import WhamPage from './WhamPage';
 import ProfilePage from './ProfilePage';
 import PublicProfilePage from './PublicProfilePage';
 import MessagesPage from './MessagesPage';
+import GuidesPage from './GuidesPage';
+import GuideDetailPage from './GuideDetailPage';
 import NotificationBell from '@/components/NotificationBell';
 
-type Page = 'catalog' | 'compare' | 'treaties' | 'forum' | 'game' | 'about' | 'auth' | 'admin' | 'profile' | 'messages';
+type Page = 'catalog' | 'compare' | 'treaties' | 'forum' | 'guides' | 'game' | 'about' | 'auth' | 'admin' | 'profile' | 'messages';
 
 const NAV_ITEMS: Array<{ id: Page; label: string; icon: string; adminOnly?: boolean; authOnly?: boolean }> = [
   { id: 'catalog',  label: 'Каталог',    icon: 'LayoutGrid' },
   { id: 'compare',  label: 'Сравнение',  icon: 'Swords' },
   { id: 'treaties', label: 'Трактаты',   icon: 'ScrollText' },
   { id: 'forum',    label: 'Форум',      icon: 'MessageSquare' },
+  { id: 'guides',   label: 'Гайды',      icon: 'BookOpen' },
   { id: 'game',     label: 'Неадекватная игра', icon: 'Gamepad2' },
   { id: 'about',    label: 'О проекте',  icon: 'Info' },
   { id: 'admin',    label: 'Управление', icon: 'Settings', adminOnly: true },
@@ -107,6 +110,7 @@ export default function Index() {
   const [forumTopicId, setForumTopicId] = useState<number | null>(null);
   const [publicProfileUserId, setPublicProfileUserId] = useState<number | null>(null);
   const [messagesWithUser, setMessagesWithUser] = useState<{ id: number; username: string } | null>(null);
+  const [guideDetailId, setGuideDetailId] = useState<number | null>(null);
   const [appliedTreaties, setAppliedTreaties] = useState<Record<string, string[]>>(() => {
     try {
       const saved = localStorage.getItem('companion_treaties');
@@ -161,6 +165,7 @@ export default function Index() {
     setDetailUnitId(null);
     setForumTopicId(null);
     setPublicProfileUserId(null);
+    setGuideDetailId(null);
     setMobileMenuOpen(false);
   };
 
@@ -546,7 +551,7 @@ export default function Index() {
               onRemoveTreaty={handleRemoveTreaty}
             />
           ) : page === 'catalog' ? (
-            <CatalogPage onSelectUnit={setDetailUnitId} />
+            <CatalogPage onSelectUnit={setDetailUnitId} onGoGuides={() => navigateTo('guides')} />
           ) : page === 'compare' ? (
             <ComparePage
               appliedTreaties={appliedTreaties}
@@ -581,6 +586,19 @@ export default function Index() {
             <AuthPage onSuccess={() => setPage('catalog')} />
           ) : page === 'admin' ? (
             <AdminPage />
+          ) : page === 'guides' ? (
+            guideDetailId ? (
+              <GuideDetailPage
+                guideId={guideDetailId}
+                onBack={() => setGuideDetailId(null)}
+                onOpenProfile={openPublicProfile}
+              />
+            ) : (
+              <GuidesPage
+                onOpenGuide={id => { setGuideDetailId(id); mainRef.current?.scrollTo({ top: 0, behavior: 'instant' }); }}
+                onOpenProfile={openPublicProfile}
+              />
+            )
           ) : page === 'profile' ? (
             <ProfilePage onOpenMessages={openMessages} />
           ) : page === 'messages' ? (

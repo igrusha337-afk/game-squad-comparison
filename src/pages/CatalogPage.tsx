@@ -23,9 +23,10 @@ const CLASS_META: Record<UnitClass, { icon: string; hue: string }> = {
 
 interface CatalogPageProps {
   onSelectUnit: (id: string) => void;
+  onGoGuides?: () => void;
 }
 
-export default function CatalogPage({ onSelectUnit }: CatalogPageProps) {
+export default function CatalogPage({ onSelectUnit, onGoGuides }: CatalogPageProps) {
   const { units: UNITS, loading } = useUnits();
 
   const [search, setSearch] = useState('');
@@ -191,6 +192,29 @@ export default function CatalogPage({ onSelectUnit }: CatalogPageProps) {
               />
             ))}
           </div>
+
+          {/* Кнопка перехода в Гайды */}
+          {onGoGuides && (
+            <div className="mt-6 flex justify-center">
+              <button
+                onClick={onGoGuides}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all"
+                style={{
+                  background: 'hsl(42 76% 50% / 0.1)',
+                  border: '1px solid hsl(42 76% 50% / 0.35)',
+                  fontFamily: '"Manrope", sans-serif',
+                  fontSize: '0.88rem',
+                  fontWeight: 600,
+                  color: 'hsl(42 76% 68%)',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'hsl(42 76% 50% / 0.18)'; e.currentTarget.style.borderColor = 'hsl(42 76% 50% / 0.6)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'hsl(42 76% 50% / 0.1)'; e.currentTarget.style.borderColor = 'hsl(42 76% 50% / 0.35)'; }}
+              >
+                <Icon name="BookOpen" size={16} />
+                Смотреть гайды по отрядам
+              </button>
+            </div>
+          )}
         </div>
       </section>
 

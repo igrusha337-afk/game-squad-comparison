@@ -14,6 +14,7 @@ const URLS = {
   statsApi: 'https://functions.poehali.dev/702bf411-49ba-4d48-b8ae-b79614b4a03b',
   profileApi: 'https://functions.poehali.dev/d236c13e-b58c-46b9-b37c-4f4fab797124',
   messagesApi: 'https://functions.poehali.dev/9c322351-b8b6-4513-a2d3-b3658d79f8e0',
+  guidesApi: 'https://functions.poehali.dev/7c42af4f-b3f5-4363-b971-9823b6d05f6c',
 };
 
 function getSessionId(): string {
@@ -182,6 +183,20 @@ export const messagesApi = {
     request(URLS.messagesApi, { method: 'POST', body: JSON.stringify({ action: 'send', receiver_id, content }) }),
   markRead: (with_user_id: number) =>
     request(URLS.messagesApi, { method: 'POST', body: JSON.stringify({ action: 'mark_read', with_user_id }) }),
+};
+
+// Guides
+export const guidesApi = {
+  list: () => request(URLS.guidesApi),
+  getGuide: (id: number) => request(`${URLS.guidesApi}?action=guide&id=${id}`),
+  create: (data: { title: string; content: string; cover_file?: string; cover_content_type?: string }) =>
+    request(URLS.guidesApi, { method: 'POST', body: JSON.stringify({ action: 'create_guide', ...data }) }),
+  update: (guide_id: number, data: { title: string; content: string }) =>
+    request(URLS.guidesApi, { method: 'POST', body: JSON.stringify({ action: 'update_guide', guide_id, ...data }) }),
+  vote: (guide_id: number, vote: 1 | -1) =>
+    request(URLS.guidesApi, { method: 'POST', body: JSON.stringify({ action: 'vote', guide_id, vote }) }),
+  uploadFile: (file_data: string, content_type: string, filename: string) =>
+    request(URLS.guidesApi, { method: 'POST', body: JSON.stringify({ action: 'upload_file', file_data, content_type, filename }) }),
 };
 
 // Treaties
