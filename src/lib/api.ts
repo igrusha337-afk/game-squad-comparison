@@ -169,7 +169,7 @@ export const statsApi = {
 export const profileApi = {
   getPublicProfile: (userId: number) => request(`${URLS.profileApi}?user_id=${userId}`),
   getUser: (userId: number) => request(`${URLS.profileApi}?user_id=${userId}`),
-  updateProfile: (data: { bio?: string; avatar_file?: string; avatar_content_type?: string }) =>
+  updateProfile: (data: { bio?: string; avatar_file?: string; avatar_content_type?: string; cover_file?: string; cover_content_type?: string }) =>
     request(URLS.profileApi, { method: 'POST', body: JSON.stringify({ action: 'update_profile', ...data }) }),
 };
 

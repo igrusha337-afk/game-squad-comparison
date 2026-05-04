@@ -21,12 +21,16 @@ export default function ProfilePage({ onOpenMessages }: Props) {
   const { user, loading: authLoading, updateUser } = useAuth();
   const [bio, setBio] = useState(user?.bio || '');
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '');
+  const [coverUrl, setCoverUrl] = useState(user?.cover_url || '');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<{ data: string; type: string } | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [coverFile, setCoverFile] = useState<{ data: string; type: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const coverRef = useRef<HTMLInputElement>(null);
 
   if (authLoading) return null;
   if (!user) return (
@@ -43,6 +47,14 @@ export default function ProfilePage({ onOpenMessages }: Props) {
     setAvatarFile({ data: base64, type: file.type });
   };
 
+  const handleCoverChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const base64 = await fileToBase64(file);
+    setCoverPreview(base64);
+    setCoverFile({ data: base64, type: file.type });
+  };
+
   const handleSave = async () => {
     setSaving(true); setError(''); setSaved(false);
     try {
@@ -51,14 +63,20 @@ export default function ProfilePage({ onOpenMessages }: Props) {
         payload.avatar_file = avatarFile.data;
         payload.avatar_content_type = avatarFile.type;
       }
+      if (coverFile) {
+        payload.cover_file = coverFile.data;
+        payload.cover_content_type = coverFile.type;
+      }
       const res = await profileApi.updateProfile(payload);
       const newAvatarUrl = res.avatar_url ?? avatarUrl;
+      const newCoverUrl = res.cover_url ?? coverUrl;
       setAvatarUrl(newAvatarUrl);
-      setAvatarFile(null);
-      setAvatarPreview(null);
+      setCoverUrl(newCoverUrl);
+      setAvatarFile(null); setAvatarPreview(null);
+      setCoverFile(null); setCoverPreview(null);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
-      updateUser({ avatar_url: newAvatarUrl, bio });
+      updateUser({ avatar_url: newAvatarUrl, bio, cover_url: newCoverUrl });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Ошибка сохранения');
     } finally {
@@ -67,6 +85,7 @@ export default function ProfilePage({ onOpenMessages }: Props) {
   };
 
   const currentAvatar = avatarPreview || avatarUrl || user.avatar_url;
+  const currentCover = coverPreview || coverUrl || user.cover_url;
 
   return (
     <div className="max-w-xl mx-auto space-y-6">
@@ -76,8 +95,38 @@ export default function ProfilePage({ onOpenMessages }: Props) {
           Мой профиль
         </h1>
         <p className="text-sm" style={{ color: '#666', fontFamily: 'Manrope, sans-serif' }}>
-          Настройте аватар и расскажите о себе — это увидят все участники
+          Настройте аватар, обложку и расскажите о себе — это увидят все участники
         </p>
+      </div>
+
+      {/* Обложка */}
+      <div className="rounded-2xl overflow-hidden" style={{ background: 'hsl(222 18% 9%)', border: '1px solid #c9a84c22' }}>
+        <div className="relative h-36 group" style={{
+          background: currentCover ? `url(${currentCover}) center/cover` : 'linear-gradient(135deg, hsl(222 20% 14%), hsl(222 30% 10%))',
+        }}>
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{ background: 'rgba(0,0,0,0.4)' }}>
+            <button
+              onClick={() => coverRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold"
+              style={{ background: '#c9a84c22', border: '1px solid #c9a84c88', color: '#f0c060', fontFamily: 'Manrope, sans-serif' }}
+            >
+              <Icon name="ImagePlus" size={15} />
+              {currentCover ? 'Изменить обложку' : 'Добавить обложку'}
+            </button>
+          </div>
+        </div>
+        <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={handleCoverChange} />
+        <div className="px-5 py-3 flex items-center justify-between">
+          <span className="text-xs uppercase tracking-widest" style={{ color: '#c9a84c88', fontFamily: 'Manrope, sans-serif' }}>Обложка профиля</span>
+          {currentCover && (
+            <button onClick={() => coverRef.current?.click()}
+              className="flex items-center gap-1.5 text-xs transition-colors"
+              style={{ color: '#c9a84c', fontFamily: 'Manrope, sans-serif' }}>
+              <Icon name="Upload" size={12} /> Заменить
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Аватар */}

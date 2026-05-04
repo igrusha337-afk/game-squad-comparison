@@ -7,6 +7,7 @@ interface User {
   email: string;
   is_admin: boolean;
   avatar_url?: string;
+  cover_url?: string;
   bio?: string;
 }
 

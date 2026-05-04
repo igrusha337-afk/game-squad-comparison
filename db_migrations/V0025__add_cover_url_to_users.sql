@@ -1,0 +1,1 @@
+ALTER TABLE t_p63666683_game_squad_compariso.users ADD COLUMN IF NOT EXISTS cover_url TEXT NOT NULL DEFAULT '';

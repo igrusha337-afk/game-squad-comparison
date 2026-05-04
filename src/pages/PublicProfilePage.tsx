@@ -9,6 +9,7 @@ interface PublicUser {
   username: string;
   is_admin: boolean;
   avatar_url: string;
+  cover_url: string;
   bio: string;
   created_at: string;
 }
@@ -53,9 +54,9 @@ export default function PublicProfilePage({ userId, onBack, onOpenMessages }: Pr
         <div className="space-y-5">
           {/* Шапка с баннером */}
           <div className="rounded-2xl overflow-hidden" style={{ background: 'hsl(222 18% 9%)', border: '1px solid #c9a84c22' }}>
-            <div className="h-28 relative" style={{
-              background: profile.avatar_url
-                ? `url(${profile.avatar_url}) center/cover`
+            <div className="h-36 relative" style={{
+              background: profile.cover_url
+                ? `url(${profile.cover_url}) center/cover`
                 : 'linear-gradient(135deg, hsl(222 20% 14%), hsl(222 30% 10%))',
             }}>
               <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 40%, hsl(222 18% 9%))' }} />
@@ -100,7 +101,7 @@ export default function PublicProfilePage({ userId, onBack, onOpenMessages }: Pr
           {profile.bio && (
             <div className="rounded-2xl p-6" style={{ background: 'hsl(222 18% 9%)', border: '1px solid #ffffff0d' }}>
               <div className="text-xs uppercase tracking-widest mb-3" style={{ color: '#c9a84c88', fontFamily: 'Manrope, sans-serif' }}>О себе</div>
-              <p className="text-sm leading-relaxed" style={{ color: '#ccc', fontFamily: 'Manrope, sans-serif' }}>
+              <p className="text-sm leading-relaxed" style={{ color: '#ccc', fontFamily: 'Manrope, sans-serif', whiteSpace: 'pre-line' }}>
                 {profile.bio}
               </p>
             </div>

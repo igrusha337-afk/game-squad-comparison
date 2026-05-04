@@ -99,7 +99,7 @@ export default function ProfileModal({ userId, onClose, onOpenMessages }: Props)
               {/* О себе */}
               {profile.bio && (
                 <div className="p-3 rounded-xl mb-2" style={{ background: '#ffffff08', border: '1px solid #ffffff10' }}>
-                  <p className="text-sm leading-relaxed" style={{ color: '#ccc', fontFamily: 'Manrope, sans-serif' }}>
+                  <p className="text-sm leading-relaxed" style={{ color: '#ccc', fontFamily: 'Manrope, sans-serif', whiteSpace: 'pre-line' }}>
                     {profile.bio}
                   </p>
                 </div>

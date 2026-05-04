@@ -1,7 +1,7 @@
 """
-Profile API: просмотр и редактирование профиля пользователя (аватар, о себе).
+Profile API: просмотр и редактирование профиля пользователя (аватар, обложка, о себе).
 GET  /?user_id=N   — публичный профиль
-POST action=update_profile — обновить аватар/bio текущего пользователя
+POST action=update_profile — обновить аватар/обложку/bio текущего пользователя
 """
 import json, os, base64, uuid
 import psycopg2
@@ -32,19 +32,19 @@ def get_session_user(session_id, conn):
         return None
     with conn.cursor() as cur:
         cur.execute(
-            f"SELECT u.id, u.username, u.email, u.is_admin, u.avatar_url, u.bio "
+            f"SELECT u.id, u.username, u.email, u.is_admin, u.avatar_url, u.bio, u.cover_url "
             f"FROM {SCHEMA}.sessions s JOIN {SCHEMA}.users u ON u.id = s.user_id "
             f"WHERE s.id = %s AND s.expires_at > now()",
             (session_id,)
         )
         row = cur.fetchone()
         if row:
-            return {'id': row[0], 'username': row[1], 'email': row[2], 'is_admin': row[3], 'avatar_url': row[4], 'bio': row[5]}
+            return {'id': row[0], 'username': row[1], 'email': row[2], 'is_admin': row[3], 'avatar_url': row[4], 'bio': row[5], 'cover_url': row[6]}
     return None
 
 def upload_image(file_data, content_type, folder):
     if content_type not in ALLOWED_TYPES:
-        raise ValueError(f'Неподдерживаемый тип файла')
+        raise ValueError('Неподдерживаемый тип файла')
     if ',' in file_data:
         file_data = file_data.split(',', 1)[1]
     file_bytes = base64.b64decode(file_data)
@@ -73,7 +73,6 @@ def handler(event: dict, context) -> dict:
     if method == 'GET':
         user_id = params.get('user_id')
         if not user_id:
-            # Возвращаем текущего пользователя
             user = get_session_user(session_id, conn)
             conn.close()
             if not user:
@@ -82,7 +81,7 @@ def handler(event: dict, context) -> dict:
 
         with conn.cursor() as cur:
             cur.execute(
-                f"SELECT id, username, is_admin, avatar_url, bio, created_at "
+                f"SELECT id, username, is_admin, avatar_url, bio, created_at, cover_url "
                 f"FROM {SCHEMA}.users WHERE id = %s",
                 (int(user_id),)
             )
@@ -92,7 +91,7 @@ def handler(event: dict, context) -> dict:
             return err('Пользователь не найден', 404)
         return ok({'user': {
             'id': row[0], 'username': row[1], 'is_admin': row[2],
-            'avatar_url': row[3], 'bio': row[4], 'created_at': row[5],
+            'avatar_url': row[3], 'bio': row[4], 'created_at': row[5], 'cover_url': row[6],
         }})
 
     # POST
@@ -107,8 +106,8 @@ def handler(event: dict, context) -> dict:
     if action == 'update_profile':
         bio = body.get('bio', user['bio'])[:500]
         avatar_url = user['avatar_url']
+        cover_url = user['cover_url']
 
-        # Загрузка нового аватара
         if body.get('avatar_file'):
             try:
                 avatar_url = upload_image(body['avatar_file'], body.get('avatar_content_type', 'image/jpeg'), 'user-avatars')
@@ -116,14 +115,21 @@ def handler(event: dict, context) -> dict:
                 conn.close()
                 return err(str(e))
 
+        if body.get('cover_file'):
+            try:
+                cover_url = upload_image(body['cover_file'], body.get('cover_content_type', 'image/jpeg'), 'user-covers')
+            except ValueError as e:
+                conn.close()
+                return err(str(e))
+
         with conn.cursor() as cur:
             cur.execute(
-                f"UPDATE {SCHEMA}.users SET avatar_url = %s, bio = %s WHERE id = %s",
-                (avatar_url, bio, user['id'])
+                f"UPDATE {SCHEMA}.users SET avatar_url = %s, bio = %s, cover_url = %s WHERE id = %s",
+                (avatar_url, bio, cover_url, user['id'])
             )
         conn.commit()
         conn.close()
-        return ok({'ok': True, 'avatar_url': avatar_url, 'bio': bio})
+        return ok({'ok': True, 'avatar_url': avatar_url, 'bio': bio, 'cover_url': cover_url})
 
     conn.close()
     return err('Неизвестное действие')
