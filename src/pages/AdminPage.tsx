@@ -700,6 +700,7 @@ export default function AdminPage() {
   const [pendingGuides, setPendingGuides] = useState<PendingGuide[]>([]);
   const [moderationLoading, setModerationLoading] = useState(false);
   const [expandedTopic, setExpandedTopic] = useState<number | null>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   const loadPending = useCallback(async () => {
     setModerationLoading(true);
@@ -713,15 +714,29 @@ export default function AdminPage() {
   }, []);
 
   const handlePublishTopic = async (id: number, approve: boolean) => {
-    await forumApi.publishTopic(id, approve);
-    showToast(approve ? 'Тема опубликована' : 'Тема отклонена');
-    loadPending();
+    const key = `topic-${id}`;
+    if (processingId === key) return;
+    setProcessingId(key);
+    try {
+      await forumApi.publishTopic(id, approve);
+      showToast(approve ? 'Тема опубликована' : 'Тема отклонена');
+      await loadPending();
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   const handlePublishGuide = async (id: number, approve: boolean) => {
-    await guidesApi.publishGuide(id, approve);
-    showToast(approve ? 'Гайд опубликован' : 'Гайд отклонён');
-    loadPending();
+    const key = `guide-${id}`;
+    if (processingId === key) return;
+    setProcessingId(key);
+    try {
+      await guidesApi.publishGuide(id, approve);
+      showToast(approve ? 'Гайд опубликован' : 'Гайд отклонён');
+      await loadPending();
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   const handleSeed = async () => {
@@ -1684,12 +1699,14 @@ export default function AdminPage() {
                             </div>
                             <div className="flex gap-2 flex-shrink-0">
                               <button onClick={() => handlePublishTopic(topic.id, true)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-sm font-semibold transition-all"
+                                disabled={processingId === `topic-${topic.id}`}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-sm font-semibold transition-all disabled:opacity-40"
                                 style={{ background: 'hsl(150 48% 40% / 0.15)', border: '1px solid hsl(150 48% 40% / 0.4)', color: 'hsl(150 48% 60%)' }}>
-                                <Icon name="Check" size={12} /> Одобрить
+                                <Icon name={processingId === `topic-${topic.id}` ? 'Loader' : 'Check'} size={12} className={processingId === `topic-${topic.id}` ? 'animate-spin' : ''} /> Одобрить
                               </button>
                               <button onClick={() => handlePublishTopic(topic.id, false)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-sm font-semibold transition-all"
+                                disabled={processingId === `topic-${topic.id}`}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-sm font-semibold transition-all disabled:opacity-40"
                                 style={{ background: 'hsl(355 62% 40% / 0.15)', border: '1px solid hsl(355 62% 40% / 0.4)', color: 'hsl(355 72% 62%)' }}>
                                 <Icon name="X" size={12} /> Отклонить
                               </button>
@@ -1723,12 +1740,14 @@ export default function AdminPage() {
                           </div>
                           <div className="flex gap-2 flex-shrink-0">
                             <button onClick={() => handlePublishGuide(guide.id, true)}
-                              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-sm font-semibold transition-all"
+                              disabled={processingId === `guide-${guide.id}`}
+                              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-sm font-semibold transition-all disabled:opacity-40"
                               style={{ background: 'hsl(150 48% 40% / 0.15)', border: '1px solid hsl(150 48% 40% / 0.4)', color: 'hsl(150 48% 60%)' }}>
-                              <Icon name="Check" size={12} /> Одобрить
+                              <Icon name={processingId === `guide-${guide.id}` ? 'Loader' : 'Check'} size={12} className={processingId === `guide-${guide.id}` ? 'animate-spin' : ''} /> Одобрить
                             </button>
                             <button onClick={() => handlePublishGuide(guide.id, false)}
-                              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-sm font-semibold transition-all"
+                              disabled={processingId === `guide-${guide.id}`}
+                              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-sm font-semibold transition-all disabled:opacity-40"
                               style={{ background: 'hsl(355 62% 40% / 0.15)', border: '1px solid hsl(355 62% 40% / 0.4)', color: 'hsl(355 72% 62%)' }}>
                               <Icon name="X" size={12} /> Отклонить
                             </button>

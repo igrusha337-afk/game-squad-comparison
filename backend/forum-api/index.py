@@ -435,11 +435,13 @@ def handler(event: dict, context) -> dict:
 
     # ── POST: удалить тему (админ) ────────────────────────────────────
     if action == 'delete_topic':
-        if not user['is_admin']:
+        if not user or not user['is_admin']:
             conn.close()
             return resp({'error': 'Нет прав'}, 403)
         topic_id = int(body.get('topic_id', 0))
         with conn.cursor() as cur:
+            cur.execute(f"UPDATE {SCHEMA}.notifications SET link_topic_id = NULL WHERE link_topic_id = %s", (topic_id,))
+            cur.execute(f"DELETE FROM {SCHEMA}.forum_topic_votes WHERE topic_id = %s", (topic_id,))
             cur.execute(f"DELETE FROM {SCHEMA}.forum_posts WHERE topic_id = %s", (topic_id,))
             cur.execute(f"DELETE FROM {SCHEMA}.forum_topics WHERE id = %s", (topic_id,))
             conn.commit()
@@ -492,6 +494,8 @@ def handler(event: dict, context) -> dict:
                         f"INSERT INTO {SCHEMA}.notifications (user_id, message) VALUES (%s, %s)",
                         (row[0], f'Ваша тема «{row[1][:60]}» была отклонена модератором')
                     )
+                cur.execute(f"UPDATE {SCHEMA}.notifications SET link_topic_id = NULL WHERE link_topic_id = %s", (topic_id,))
+                cur.execute(f"DELETE FROM {SCHEMA}.forum_topic_votes WHERE topic_id = %s", (topic_id,))
                 cur.execute(f"DELETE FROM {SCHEMA}.forum_posts WHERE topic_id = %s", (topic_id,))
                 cur.execute(f"DELETE FROM {SCHEMA}.forum_topics WHERE id = %s", (topic_id,))
             conn.commit()
