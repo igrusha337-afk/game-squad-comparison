@@ -10,6 +10,7 @@ interface Topic {
   author_id: number; author: string; author_avatar?: string;
   views: number; is_pinned: boolean; is_locked: boolean;
   created_at: string; updated_at: string; post_count: number;
+  likes: number; dislikes: number; user_vote: number | null;
 }
 
 function timeAgo(iso: string) {
@@ -34,6 +35,17 @@ export default function ForumPage({ onOpenTopic, onOpenProfile }: ForumPageProps
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  const handleVote = async (e: React.MouseEvent, topicId: number, vote: 1 | -1) => {
+    e.stopPropagation();
+    if (!user) return;
+    try {
+      await forumApi.voteTopic(topicId, vote);
+      const data = await forumApi.getTopics();
+      setTopics(data.topics || []);
+    } catch { /* ignore */ }
+  };
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -66,51 +78,63 @@ export default function ForumPage({ onOpenTopic, onOpenProfile }: ForumPageProps
 
   return (
     <div className="max-w-4xl">
+      {/* Шапка */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-semibold text-foreground mb-1">Форум</h1>
-          <p className="text-muted-foreground text-sm">Обсуждения, гайды и советы сообщества</p>
+          <h1 style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: '2rem', fontWeight: 700, color: 'hsl(38 24% 94%)' }}>Форум</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">Обсуждения, стратегии и советы сообщества</p>
         </div>
         {user && !showForm && (
           <button onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-sm rounded-sm hover:bg-primary/90 transition-colors">
-            <Icon name="Plus" size={14} /> Новая тема
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
+            style={{ background: 'hsl(42 76% 50% / 0.15)', border: '1px solid hsl(42 76% 50% / 0.4)', color: 'hsl(42 76% 68%)', fontFamily: 'Manrope, sans-serif' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'hsl(42 76% 50% / 0.25)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'hsl(42 76% 50% / 0.15)'; }}>
+            <Icon name="Plus" size={15} /> Новая тема
           </button>
         )}
       </div>
 
-      {/* Форма создания темы */}
+      {/* Форма создания темы — современный дизайн */}
       {showForm && (
-        <div className="bg-card border border-primary/30 rounded-sm p-5 mb-6 animate-fade-in">
-          <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-            <Icon name="PenLine" size={14} className="text-primary" /> Новая тема
-          </h2>
-          <form onSubmit={handleCreate} className="space-y-3">
+        <div className="mb-6 rounded-2xl overflow-hidden" style={{ background: 'hsl(222 18% 9%)', border: '1px solid hsl(42 76% 50% / 0.25)', boxShadow: '0 8px 32px hsl(222 40% 2% / 0.5)' }}>
+          <div className="px-6 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid hsl(222 14% 16%)' }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'hsl(42 76% 50% / 0.15)', border: '1px solid hsl(42 76% 50% / 0.3)' }}>
+              <Icon name="PenLine" size={15} style={{ color: 'hsl(42 76% 68%)' }} />
+            </div>
+            <span style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: '1.2rem', fontWeight: 600, color: 'hsl(38 24% 92%)' }}>Новая тема</span>
+          </div>
+          <form onSubmit={handleCreate} className="p-6 space-y-4">
             {error && (
-              <div className="p-2 bg-destructive/10 border border-destructive/30 text-destructive text-xs rounded-sm flex items-center gap-2">
-                <Icon name="AlertCircle" size={12} /> {error}
+              <div className="p-3 rounded-xl text-sm flex items-center gap-2" style={{ background: 'hsl(355 62% 30% / 0.2)', border: '1px solid hsl(355 62% 44% / 0.4)', color: 'hsl(355 72% 68%)', fontFamily: 'Manrope, sans-serif' }}>
+                <Icon name="AlertCircle" size={14} /> {error}
               </div>
             )}
             <div>
-              <label className="text-xs text-muted-foreground block mb-1.5">Заголовок *</label>
-              <input
-                type="text" value={title} onChange={e => setTitle(e.target.value)}
-                placeholder="Заголовок темы..."
-                className="w-full bg-background border border-border rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              />
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(42 50% 54%)', fontFamily: 'Manrope, sans-serif' }}>Заголовок</label>
+              <input type="text" value={title} onChange={e => setTitle(e.target.value)}
+                placeholder="О чём хотите поговорить?"
+                className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all"
+                style={{ background: 'hsl(222 20% 12%)', border: '1px solid hsl(222 14% 22%)', color: 'hsl(38 18% 90%)', fontFamily: 'Manrope, sans-serif' }}
+                onFocus={e => e.target.style.borderColor = 'hsl(42 76% 50% / 0.6)'}
+                onBlur={e => e.target.style.borderColor = 'hsl(222 14% 22%)'} />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground block mb-1.5">Содержимое *</label>
-              <RichEditor value={content} onChange={setContent} placeholder="Опишите тему подробно..." minHeight={160} />
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(42 50% 54%)', fontFamily: 'Manrope, sans-serif' }}>Содержимое</label>
+              <RichEditor value={content} onChange={setContent} placeholder="Опишите тему подробно..." minHeight={180} />
             </div>
-            <div className="flex gap-2 justify-end">
+            <div className="flex gap-3 justify-end pt-1">
               <button type="button" onClick={() => { setShowForm(false); setTitle(''); setContent(''); setError(''); }}
-                className="px-4 py-2 text-sm border border-border rounded-sm hover:bg-muted transition-colors">
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                style={{ background: 'transparent', border: '1px solid hsl(222 14% 22%)', color: 'hsl(222 10% 58%)', fontFamily: 'Manrope, sans-serif' }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = 'hsl(222 14% 34%)'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = 'hsl(222 14% 22%)'}>
                 Отмена
               </button>
               <button type="submit" disabled={submitting}
-                className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-sm hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center gap-2">
-                {submitting ? <><Icon name="Loader" size={13} className="animate-spin" /> Публикую...</> : 'Опубликовать'}
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg, hsl(42 76% 52%), hsl(30 64% 38%))', color: 'hsl(222 30% 10%)', fontFamily: 'Manrope, sans-serif' }}>
+                {submitting ? <><Icon name="Loader" size={13} className="animate-spin" /> Публикую...</> : <><Icon name="Send" size={13} /> Опубликовать</>}
               </button>
             </div>
           </form>
@@ -118,7 +142,7 @@ export default function ForumPage({ onOpenTopic, onOpenProfile }: ForumPageProps
       )}
 
       {!user && (
-        <div className="bg-card border border-border rounded-sm p-4 mb-6 text-sm text-muted-foreground flex items-center gap-3">
+        <div className="rounded-xl p-4 mb-6 text-sm flex items-center gap-3" style={{ background: 'hsl(222 18% 9%)', border: '1px solid hsl(222 14% 18%)', color: 'hsl(222 8% 58%)', fontFamily: 'Manrope, sans-serif' }}>
           <Icon name="LogIn" size={16} />
           Войдите, чтобы создавать темы и участвовать в обсуждениях
         </div>
@@ -137,45 +161,49 @@ export default function ForumPage({ onOpenTopic, onOpenProfile }: ForumPageProps
       ) : (
         <div className="space-y-2">
           {topics.map(t => (
-            <div
-              key={t.id}
-              onClick={() => onOpenTopic(t.id)}
-              className={`bg-card border rounded-sm cursor-pointer hover:border-primary/40 transition-all group
-                ${t.is_pinned ? 'border-primary/30' : 'border-border'}`}
-            >
+            <div key={t.id} onClick={() => onOpenTopic(t.id)}
+              className={`cursor-pointer rounded-xl transition-all group overflow-hidden`}
+              style={{ background: 'hsl(222 18% 9%)', border: `1px solid ${t.is_pinned ? 'hsl(42 76% 50% / 0.3)' : 'hsl(222 14% 16%)'}` }}
+              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = t.is_pinned ? 'hsl(42 76% 50% / 0.5)' : 'hsl(42 76% 50% / 0.2)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = t.is_pinned ? 'hsl(42 76% 50% / 0.3)' : 'hsl(222 14% 16%)'; }}>
               <div className="flex items-center gap-3 p-4">
                 <div className="flex-shrink-0" onClick={e => { e.stopPropagation(); onOpenProfile?.(t.author_id); }}>
-                  <UserAvatar username={t.author} avatarUrl={t.author_avatar} size={44} />
+                  <UserAvatar username={t.author} avatarUrl={t.author_avatar} size={42} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                  <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
                     {t.is_pinned && (
-                      <span className="flex items-center gap-1 text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded-sm">
-                        <Icon name="Pin" size={9} /> Закреплено
+                      <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md font-semibold" style={{ background: 'hsl(42 76% 50% / 0.15)', color: 'hsl(42 76% 64%)', border: '1px solid hsl(42 76% 50% / 0.2)' }}>
+                        <Icon name="Pin" size={8} /> Закреплено
                       </span>
                     )}
                     {t.is_locked && (
-                      <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-sm">
-                        <Icon name="Lock" size={9} /> Закрыто
+                      <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md" style={{ background: 'hsl(222 14% 16%)', color: 'hsl(222 8% 52%)' }}>
+                        <Icon name="Lock" size={8} /> Закрыто
                       </span>
                     )}
                   </div>
-                  <h3 className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors leading-tight truncate">
+                  <h3 className="font-semibold text-sm leading-tight truncate group-hover:text-primary transition-colors" style={{ color: 'hsl(38 18% 90%)', fontFamily: 'Manrope, sans-serif' }}>
                     {t.title}
                   </h3>
-                  <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-0.5">
-                    <button
-                      className="hover:text-foreground transition-colors font-medium"
-                      onClick={e => { e.stopPropagation(); onOpenProfile?.(t.author_id); }}
-                    >
-                      {t.author}
-                    </button>
-                    <span className="flex items-center gap-1"><Icon name="Clock" size={10} /> {timeAgo(t.created_at)}</span>
+                  <div className="flex items-center gap-3 text-[11px] mt-0.5" style={{ color: 'hsl(222 8% 52%)' }}>
+                    <button className="font-medium hover:text-foreground transition-colors"
+                      onClick={e => { e.stopPropagation(); onOpenProfile?.(t.author_id); }}>{t.author}</button>
+                    <span>{timeAgo(t.created_at)}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 text-[11px] text-muted-foreground flex-shrink-0">
-                  <span className="flex items-center gap-1"><Icon name="MessageCircle" size={12} /> {t.post_count}</span>
-                  <span className="flex items-center gap-1"><Icon name="Eye" size={12} /> {t.views}</span>
+                <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                  <button onClick={e => handleVote(e, t.id, 1)}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all"
+                    style={{ background: t.user_vote === 1 ? 'hsl(150 48% 40% / 0.2)' : 'hsl(222 14% 14%)', color: t.user_vote === 1 ? 'hsl(150 48% 60%)' : 'hsl(222 8% 52%)', border: `1px solid ${t.user_vote === 1 ? 'hsl(150 48% 40% / 0.4)' : 'hsl(222 14% 20%)'}` }}>
+                    <Icon name="ThumbsUp" size={11} /> {t.likes}
+                  </button>
+                  <button onClick={e => handleVote(e, t.id, -1)}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all"
+                    style={{ background: t.user_vote === -1 ? 'hsl(355 62% 40% / 0.2)' : 'hsl(222 14% 14%)', color: t.user_vote === -1 ? 'hsl(355 72% 62%)' : 'hsl(222 8% 52%)', border: `1px solid ${t.user_vote === -1 ? 'hsl(355 62% 40% / 0.4)' : 'hsl(222 14% 20%)'}` }}>
+                    <Icon name="ThumbsDown" size={11} /> {t.dislikes}
+                  </button>
+                  <span className="flex items-center gap-1 text-[11px]" style={{ color: 'hsl(222 8% 46%)' }}><Icon name="MessageCircle" size={11} /> {t.post_count}</span>
                 </div>
               </div>
             </div>

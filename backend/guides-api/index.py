@@ -95,7 +95,7 @@ def fmt_guide(row):
         'author_id': row[2],
         'author': row[3],
         'author_avatar': row[4],
-        'cover_url': row[5],
+        'guide_avatar_url': row[5],
         'views': row[6],
         'created_at': str(row[7]),
         'updated_at': str(row[8]),
@@ -133,7 +133,7 @@ def handler(event: dict, context) -> dict:
             if user_id is not None:
                 cur.execute(
                     f"""SELECT g.id, g.title, g.author_id, u.username, u.avatar_url,
-                               g.cover_url, g.views, g.created_at, g.updated_at,
+                               g.guide_avatar_url, g.views, g.created_at, g.updated_at,
                                COALESCE(SUM(CASE WHEN v.vote=1 THEN 1 ELSE 0 END),0) as likes,
                                COALESCE(SUM(CASE WHEN v.vote=-1 THEN 1 ELSE 0 END),0) as dislikes,
                                MAX(CASE WHEN v.user_id=%s THEN v.vote ELSE NULL END) as user_vote
@@ -147,7 +147,7 @@ def handler(event: dict, context) -> dict:
             else:
                 cur.execute(
                     f"""SELECT g.id, g.title, g.author_id, u.username, u.avatar_url,
-                               g.cover_url, g.views, g.created_at, g.updated_at,
+                               g.guide_avatar_url, g.views, g.created_at, g.updated_at,
                                COALESCE(SUM(CASE WHEN v.vote=1 THEN 1 ELSE 0 END),0) as likes,
                                COALESCE(SUM(CASE WHEN v.vote=-1 THEN 1 ELSE 0 END),0) as dislikes,
                                NULL as user_vote
@@ -173,7 +173,7 @@ def handler(event: dict, context) -> dict:
             if user_id is not None:
                 cur.execute(
                     f"""SELECT g.id, g.title, g.author_id, u.username, u.avatar_url,
-                               g.cover_url, g.views, g.created_at, g.updated_at,
+                               g.guide_avatar_url, g.views, g.created_at, g.updated_at,
                                COALESCE(SUM(CASE WHEN v.vote=1 THEN 1 ELSE 0 END),0) as likes,
                                COALESCE(SUM(CASE WHEN v.vote=-1 THEN 1 ELSE 0 END),0) as dislikes,
                                MAX(CASE WHEN v.user_id=%s THEN v.vote ELSE NULL END) as user_vote,
@@ -188,7 +188,7 @@ def handler(event: dict, context) -> dict:
             else:
                 cur.execute(
                     f"""SELECT g.id, g.title, g.author_id, u.username, u.avatar_url,
-                               g.cover_url, g.views, g.created_at, g.updated_at,
+                               g.guide_avatar_url, g.views, g.created_at, g.updated_at,
                                COALESCE(SUM(CASE WHEN v.vote=1 THEN 1 ELSE 0 END),0) as likes,
                                COALESCE(SUM(CASE WHEN v.vote=-1 THEN 1 ELSE 0 END),0) as dislikes,
                                NULL as user_vote,
@@ -227,21 +227,21 @@ def handler(event: dict, context) -> dict:
         if not content:
             conn.close()
             return resp({'error': 'Напишите содержимое гайда'}, 400)
-        cover_url = ''
-        if body.get('cover_file'):
+        guide_avatar_url = ''
+        if body.get('avatar_file'):
             try:
-                cover_url = upload_cover(
-                    body['cover_file'],
-                    body.get('cover_content_type', 'image/jpeg')
+                guide_avatar_url = upload_cover(
+                    body['avatar_file'],
+                    body.get('avatar_content_type', 'image/jpeg')
                 )
             except ValueError as e:
                 conn.close()
                 return resp({'error': str(e)}, 400)
         with conn.cursor() as cur:
             cur.execute(
-                f"INSERT INTO {SCHEMA}.guides (title, content, author_id, cover_url) "
+                f"INSERT INTO {SCHEMA}.guides (title, content, author_id, guide_avatar_url) "
                 f"VALUES (%s, %s, %s, %s) RETURNING id",
-                (title, content, user['id'], cover_url)
+                (title, content, user['id'], guide_avatar_url)
             )
             guide_id = cur.fetchone()[0]
             conn.commit()

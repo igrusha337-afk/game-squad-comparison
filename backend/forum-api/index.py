@@ -80,6 +80,9 @@ def fmt_topic(row):
         'views': row[5], 'is_pinned': row[6], 'is_locked': row[7],
         'created_at': str(row[8]), 'updated_at': str(row[9]),
         'post_count': row[10], 'author_avatar': row[11] if len(row) > 11 else '',
+        'likes': int(row[12]) if len(row) > 12 and row[12] is not None else 0,
+        'dislikes': int(row[13]) if len(row) > 13 and row[13] is not None else 0,
+        'user_vote': row[14] if len(row) > 14 else None,
     }
 
 
@@ -111,17 +114,39 @@ def handler(event: dict, context) -> dict:
 
     # ── GET: список тем ──────────────────────────────────────────────
     if method == 'GET' and not action:
+        user_id = user['id'] if user else None
         with conn.cursor() as cur:
-            cur.execute(
-                f"""SELECT t.id, t.title, t.content, t.author_id, u.username,
-                       t.views, t.is_pinned, t.is_locked, t.created_at, t.updated_at,
-                       COUNT(p.id) as post_count, u.avatar_url
-                    FROM {SCHEMA}.forum_topics t
-                    JOIN {SCHEMA}.users u ON u.id = t.author_id
-                    LEFT JOIN {SCHEMA}.forum_posts p ON p.topic_id = t.id AND p.is_hidden = false
-                    GROUP BY t.id, u.username, u.avatar_url
-                    ORDER BY t.is_pinned DESC, t.updated_at DESC"""
-            )
+            if user_id:
+                cur.execute(
+                    f"""SELECT t.id, t.title, t.content, t.author_id, u.username,
+                           t.views, t.is_pinned, t.is_locked, t.created_at, t.updated_at,
+                           COUNT(DISTINCT p.id) as post_count, u.avatar_url,
+                           COALESCE(SUM(CASE WHEN v.vote=1 THEN 1 ELSE 0 END),0) as likes,
+                           COALESCE(SUM(CASE WHEN v.vote=-1 THEN 1 ELSE 0 END),0) as dislikes,
+                           MAX(CASE WHEN v.user_id=%s THEN v.vote ELSE NULL END) as user_vote
+                        FROM {SCHEMA}.forum_topics t
+                        JOIN {SCHEMA}.users u ON u.id = t.author_id
+                        LEFT JOIN {SCHEMA}.forum_posts p ON p.topic_id = t.id AND p.is_hidden = false
+                        LEFT JOIN {SCHEMA}.forum_topic_votes v ON v.topic_id = t.id
+                        GROUP BY t.id, u.username, u.avatar_url
+                        ORDER BY t.is_pinned DESC, t.updated_at DESC""",
+                    (user_id,)
+                )
+            else:
+                cur.execute(
+                    f"""SELECT t.id, t.title, t.content, t.author_id, u.username,
+                           t.views, t.is_pinned, t.is_locked, t.created_at, t.updated_at,
+                           COUNT(DISTINCT p.id) as post_count, u.avatar_url,
+                           COALESCE(SUM(CASE WHEN v.vote=1 THEN 1 ELSE 0 END),0) as likes,
+                           COALESCE(SUM(CASE WHEN v.vote=-1 THEN 1 ELSE 0 END),0) as dislikes,
+                           NULL as user_vote
+                        FROM {SCHEMA}.forum_topics t
+                        JOIN {SCHEMA}.users u ON u.id = t.author_id
+                        LEFT JOIN {SCHEMA}.forum_posts p ON p.topic_id = t.id AND p.is_hidden = false
+                        LEFT JOIN {SCHEMA}.forum_topic_votes v ON v.topic_id = t.id
+                        GROUP BY t.id, u.username, u.avatar_url
+                        ORDER BY t.is_pinned DESC, t.updated_at DESC"""
+                )
             rows = cur.fetchall()
         conn.close()
         return resp({'topics': [fmt_topic(r) for r in rows]})
@@ -342,6 +367,38 @@ def handler(event: dict, context) -> dict:
             conn.commit()
         conn.close()
         return resp({'message': 'Готово', 'is_hidden': row[0] if row else False})
+
+    # ── POST: голосовать за тему ─────────────────────────────────────
+    if action == 'vote_topic':
+        topic_id = int(body.get('topic_id', 0))
+        vote = body.get('vote')
+        if vote not in (1, -1):
+            conn.close()
+            return resp({'error': 'vote должен быть 1 или -1'}, 400)
+        with conn.cursor() as cur:
+            cur.execute(
+                f"SELECT vote FROM {SCHEMA}.forum_topic_votes WHERE topic_id=%s AND user_id=%s",
+                (topic_id, user['id'])
+            )
+            existing = cur.fetchone()
+            if existing is None:
+                cur.execute(
+                    f"INSERT INTO {SCHEMA}.forum_topic_votes (topic_id, user_id, vote) VALUES (%s, %s, %s)",
+                    (topic_id, user['id'], vote)
+                )
+            elif existing[0] == vote:
+                cur.execute(
+                    f"UPDATE {SCHEMA}.forum_topic_votes SET vote=0 WHERE topic_id=%s AND user_id=%s",
+                    (topic_id, user['id'])
+                )
+            else:
+                cur.execute(
+                    f"UPDATE {SCHEMA}.forum_topic_votes SET vote=%s WHERE topic_id=%s AND user_id=%s",
+                    (vote, topic_id, user['id'])
+                )
+            conn.commit()
+        conn.close()
+        return resp({'message': 'ok'})
 
     # ── POST: удалить тему (админ) ────────────────────────────────────
     if action == 'delete_topic':

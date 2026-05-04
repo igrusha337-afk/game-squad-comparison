@@ -1,0 +1,1 @@
+ALTER TABLE t_p63666683_game_squad_compariso.guides ADD COLUMN IF NOT EXISTS guide_avatar_url TEXT NOT NULL DEFAULT '';

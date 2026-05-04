@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Icon from '@/components/ui/icon';
 import { useAuth } from '@/context/AuthContext';
+import { messagesApi } from '@/lib/api';
 import CatalogPage from './CatalogPage';
 import ComparePage from './ComparePage';
 import TreatiesPage from './TreatiesPage';
@@ -111,6 +112,7 @@ export default function Index() {
   const [publicProfileUserId, setPublicProfileUserId] = useState<number | null>(null);
   const [messagesWithUser, setMessagesWithUser] = useState<{ id: number; username: string } | null>(null);
   const [guideDetailId, setGuideDetailId] = useState<number | null>(null);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const [appliedTreaties, setAppliedTreaties] = useState<Record<string, string[]>>(() => {
     try {
       const saved = localStorage.getItem('companion_treaties');
@@ -129,6 +131,26 @@ export default function Index() {
   useEffect(() => {
     if (detailUnitId) mainRef.current?.scrollTo({ top: 0, behavior: 'instant' });
   }, [detailUnitId]);
+
+  const fetchUnread = useCallback(async () => {
+    if (!user) return;
+    try {
+      const d = await messagesApi.getUnreadCount();
+      setUnreadMessages(d.count || 0);
+    } catch { /* ignore */ }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) { setUnreadMessages(0); return; }
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+    return () => clearInterval(interval);
+  }, [user, fetchUnread]);
+
+  // Сбрасываем счётчик при переходе в сообщения
+  useEffect(() => {
+    if (page === 'messages') setUnreadMessages(0);
+  }, [page]);
 
   const handleApplyTreaty = (unitId: string, treatyId: string) => {
     setAppliedTreaties(prev => ({
@@ -474,6 +496,12 @@ export default function Index() {
                   onMouseLeave={e => { e.currentTarget.style.color = page === 'messages' ? 'hsl(42 76% 68%)' : 'hsl(222 10% 58%)'; e.currentTarget.style.borderColor = page === 'messages' ? 'hsl(42 76% 50% / 0.4)' : 'hsl(222 14% 18%)'; }}
                 >
                   <Icon name="Mail" size={16} />
+                  {unreadMessages > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold"
+                      style={{ background: 'hsl(355 72% 58%)', color: '#fff', lineHeight: 1 }}>
+                      {unreadMessages > 9 ? '9+' : unreadMessages}
+                    </span>
+                  )}
                 </button>
                 <NotificationBell
                   onGoForum={() => navigateTo('forum')}

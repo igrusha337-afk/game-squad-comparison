@@ -52,14 +52,15 @@ def get_session_user(session_id: str, conn):
         return None
     with conn.cursor() as cur:
         cur.execute(
-            f"SELECT u.id, u.username, u.email, u.is_admin FROM {SCHEMA}.sessions s "
+            f"SELECT u.id, u.username, u.email, u.is_admin, u.avatar_url, u.bio, u.cover_url FROM {SCHEMA}.sessions s "
             f"JOIN {SCHEMA}.users u ON u.id = s.user_id "
             f"WHERE s.id = %s AND s.expires_at > now()",
             (session_id,)
         )
         row = cur.fetchone()
         if row:
-            return {'id': row[0], 'username': row[1], 'email': row[2], 'is_admin': row[3]}
+            return {'id': row[0], 'username': row[1], 'email': row[2], 'is_admin': row[3],
+                    'avatar_url': row[4] or '', 'bio': row[5] or '', 'cover_url': row[6] or ''}
     return None
 
 

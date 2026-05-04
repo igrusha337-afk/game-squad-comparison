@@ -12,7 +12,7 @@ interface Guide {
   author_id: number;
   author: string;
   author_avatar: string;
-  cover_url: string;
+  guide_avatar_url: string;
   views: number;
   likes: number;
   dislikes: number;
@@ -127,12 +127,7 @@ export default function GuideDetailPage({ guideId, onBack, onOpenProfile }: Prop
         <Icon name="ChevronLeft" size={16} /> Назад к гайдам
       </button>
 
-      {/* Обложка */}
-      {guide.cover_url && !editing && (
-        <div className="h-48 w-full rounded-sm overflow-hidden mb-4">
-          <img src={guide.cover_url} alt="" className="w-full h-full object-cover" />
-        </div>
-      )}
+      {/* Аватар гайда — если есть, показываем крупно рядом с заголовком */}
 
       {/* Карточка гайда */}
       {editing ? (
@@ -161,14 +156,19 @@ export default function GuideDetailPage({ guideId, onBack, onOpenProfile }: Prop
           </div>
         </div>
       ) : (
-        <div className="bg-card border border-border rounded-sm p-5 mb-6">
+        <div className="rounded-2xl overflow-hidden mb-6" style={{ background: 'hsl(222 18% 9%)', border: '1px solid hsl(222 14% 18%)' }}>
           {/* Автор + мета */}
-          <div className="flex items-start gap-3 mb-4">
-            <div className="flex-shrink-0 cursor-pointer" onClick={() => onOpenProfile?.(guide.author_id)}>
-              <UserAvatar username={guide.author} avatarUrl={guide.author_avatar} size={44} />
+          <div className="flex items-start gap-4 p-5 pb-4">
+            {/* Аватар гайда или автора */}
+            <div className="flex-shrink-0 w-14 h-14 rounded-xl overflow-hidden cursor-pointer"
+              style={{ background: 'hsl(222 20% 14%)', border: '1px solid hsl(222 14% 22%)' }}
+              onClick={() => onOpenProfile?.(guide.author_id)}>
+              {guide.guide_avatar_url
+                ? <img src={guide.guide_avatar_url} alt="" className="w-full h-full object-cover" />
+                : <UserAvatar username={guide.author} avatarUrl={guide.author_avatar} size={56} />}
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-semibold text-foreground leading-snug mb-1">{guide.title}</h1>
+              <h1 className="text-xl font-semibold leading-snug mb-1" style={{ color: 'hsl(38 24% 92%)', fontFamily: '"Cormorant Garamond", serif', fontSize: '1.5rem' }}>{guide.title}</h1>
               <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap">
                 <button className="font-medium hover:text-foreground transition-colors"
                   onClick={() => onOpenProfile?.(guide.author_id)}>
@@ -188,35 +188,26 @@ export default function GuideDetailPage({ guideId, onBack, onOpenProfile }: Prop
           </div>
 
           {/* Контент */}
-          <div
-            className="forum-content text-sm text-foreground leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: guide.content }}
-          />
-
-          {/* Лайки */}
-          <div className="flex items-center gap-3 mt-6 pt-4 border-t border-border">
-            <span className="text-xs text-muted-foreground mr-1">Оценить:</span>
-            <button
-              onClick={() => handleVote(1)}
-              disabled={voting || !user}
-              className={`flex items-center gap-2 px-4 py-2 rounded-sm text-sm font-medium transition-all disabled:opacity-50 ${
-                guide.user_vote === 1
-                  ? 'bg-green-500/20 text-green-400 border border-green-500/40'
-                  : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground border border-border'
-              }`}>
-              <Icon name="ThumbsUp" size={15} /> {guide.likes}
-            </button>
-            <button
-              onClick={() => handleVote(-1)}
-              disabled={voting || !user}
-              className={`flex items-center gap-2 px-4 py-2 rounded-sm text-sm font-medium transition-all disabled:opacity-50 ${
-                guide.user_vote === -1
-                  ? 'bg-red-500/20 text-red-400 border border-red-500/40'
-                  : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground border border-border'
-              }`}>
-              <Icon name="ThumbsDown" size={15} /> {guide.dislikes}
-            </button>
-            {!user && <span className="text-xs text-muted-foreground">Войдите, чтобы оценить</span>}
+          <div className="px-5 pb-5">
+            <div
+              className="forum-content text-sm text-foreground leading-relaxed mb-6"
+              dangerouslySetInnerHTML={{ __html: guide.content }}
+            />
+            {/* Лайки */}
+            <div className="flex items-center gap-3 pt-4" style={{ borderTop: '1px solid hsl(222 14% 18%)' }}>
+              <span className="text-xs mr-1" style={{ color: 'hsl(222 8% 54%)', fontFamily: 'Manrope, sans-serif' }}>Оценить:</span>
+              <button onClick={() => handleVote(1)} disabled={voting || !user}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
+                style={{ background: guide.user_vote === 1 ? 'hsl(150 48% 40% / 0.2)' : 'hsl(222 20% 12%)', color: guide.user_vote === 1 ? 'hsl(150 48% 60%)' : 'hsl(222 8% 58%)', border: `1px solid ${guide.user_vote === 1 ? 'hsl(150 48% 40% / 0.4)' : 'hsl(222 14% 22%)'}`, fontFamily: 'Manrope, sans-serif' }}>
+                <Icon name="ThumbsUp" size={15} /> {guide.likes}
+              </button>
+              <button onClick={() => handleVote(-1)} disabled={voting || !user}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
+                style={{ background: guide.user_vote === -1 ? 'hsl(355 62% 40% / 0.2)' : 'hsl(222 20% 12%)', color: guide.user_vote === -1 ? 'hsl(355 72% 62%)' : 'hsl(222 8% 58%)', border: `1px solid ${guide.user_vote === -1 ? 'hsl(355 62% 40% / 0.4)' : 'hsl(222 14% 22%)'}`, fontFamily: 'Manrope, sans-serif' }}>
+                <Icon name="ThumbsDown" size={15} /> {guide.dislikes}
+              </button>
+              {!user && <span className="text-xs" style={{ color: 'hsl(222 8% 48%)', fontFamily: 'Manrope, sans-serif' }}>Войдите, чтобы оценить</span>}
+            </div>
           </div>
         </div>
       )}

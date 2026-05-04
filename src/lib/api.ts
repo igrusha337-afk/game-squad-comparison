@@ -95,6 +95,8 @@ export const forumApi = {
     request(URLS.forum, { method: 'POST', body: JSON.stringify({ action: 'hide_post', post_id }) }),
   deleteTopic: (topic_id: number) =>
     request(URLS.forum, { method: 'POST', body: JSON.stringify({ action: 'delete_topic', topic_id }) }),
+  voteTopic: (topic_id: number, vote: 1 | -1) =>
+    request(URLS.forum, { method: 'POST', body: JSON.stringify({ action: 'vote_topic', topic_id, vote }) }),
   getNotifications: () => request(`${URLS.forum}?action=notifications`),
   readNotifications: () => request(URLS.forum, { method: 'POST', body: JSON.stringify({ action: 'read_notifications' }) }),
 };
@@ -189,7 +191,7 @@ export const messagesApi = {
 export const guidesApi = {
   list: () => request(URLS.guidesApi),
   getGuide: (id: number) => request(`${URLS.guidesApi}?action=guide&id=${id}`),
-  create: (data: { title: string; content: string; cover_file?: string; cover_content_type?: string }) =>
+  create: (data: { title: string; content: string; avatar_file?: string; avatar_content_type?: string }) =>
     request(URLS.guidesApi, { method: 'POST', body: JSON.stringify({ action: 'create_guide', ...data }) }),
   update: (guide_id: number, data: { title: string; content: string }) =>
     request(URLS.guidesApi, { method: 'POST', body: JSON.stringify({ action: 'update_guide', guide_id, ...data }) }),
