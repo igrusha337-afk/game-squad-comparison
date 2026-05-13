@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import RichEditor from '@/components/RichEditor';
 import UserAvatar from '@/components/UserAvatar';
 import Icon from '@/components/ui/icon';
+import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 
 interface Topic {
   id: number; title: string; content: string;
@@ -36,6 +37,11 @@ interface TopicPageProps {
 export default function TopicPage({ topicId, onBack, onOpenProfile, onOpenMessages }: TopicPageProps) {
   const { user } = useAuth();
   const [topic, setTopic] = useState<Topic | null>(null);
+
+  useDocumentMeta({
+    title: topic ? `Форум: ${topic.title}` : undefined,
+    description: topic ? `${topic.author} — ${topic.title}. Ответов: ${topic.post_count}.` : undefined,
+  });
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [reply, setReply] = useState('');
