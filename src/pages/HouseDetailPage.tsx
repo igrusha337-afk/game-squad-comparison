@@ -3,6 +3,7 @@ import { housesApi } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import UserAvatar from '@/components/UserAvatar';
 import Icon from '@/components/ui/icon';
+import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 
 const SERVERS = [
   'EU1 Crystal Sea', 'EU2 Pantheon Warhall', 'EU3',
@@ -45,6 +46,12 @@ interface Props {
 export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Props) {
   const { user, updateUser } = useAuth();
   const [house, setHouse] = useState<HouseDetail | null>(null);
+
+  useDocumentMeta({
+    title: house ? `Дом ${house.name}` : undefined,
+    description: house ? `${house.name} — ${house.short_desc || 'Дом в Хоругви'}. Сервер: ${house.server}. Участников: ${house.member_count}.` : undefined,
+    image: house?.emblem_url || undefined,
+  });
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
   const [leaving, setLeaving] = useState(false);

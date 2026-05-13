@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import RichEditor from '@/components/RichEditor';
 import UserAvatar from '@/components/UserAvatar';
 import Icon from '@/components/ui/icon';
+import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 
 interface Guide {
   id: number;
@@ -47,6 +48,12 @@ interface Props {
 export default function GuideDetailPage({ guideId, onBack, onOpenProfile }: Props) {
   const { user } = useAuth();
   const [guide, setGuide] = useState<Guide | null>(null);
+
+  useDocumentMeta({
+    title: guide ? `Гайд: ${guide.title}` : undefined,
+    description: guide ? `Гайд от ${guide.author} — ${guide.title}` : undefined,
+    image: guide?.guide_avatar_url || undefined,
+  });
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
