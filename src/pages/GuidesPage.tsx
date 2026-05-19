@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { guidesApi } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import { cacheGet, cacheSet, cacheInvalidate } from '@/lib/cache';
 import RichEditor from '@/components/RichEditor';
 import UserAvatar from '@/components/UserAvatar';
 import Icon from '@/components/ui/icon';
@@ -55,11 +56,15 @@ export default function GuidesPage({ onOpenGuide, onOpenProfile }: Props) {
   const [pendingNotice, setPendingNotice] = useState(false);
   const avatarRef = useRef<HTMLInputElement>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (force = false) => {
+    const cached = cacheGet<Guide[]>('guides');
+    if (cached && !force) { setGuides(cached); setLoading(false); return; }
     setLoading(true);
     try {
       const d = await guidesApi.list();
-      setGuides(d.guides || []);
+      const list = d.guides || [];
+      cacheSet('guides', list);
+      setGuides(list);
     } finally {
       setLoading(false);
     }
@@ -85,6 +90,7 @@ export default function GuidesPage({ onOpenGuide, onOpenProfile }: Props) {
       const payload: Parameters<typeof guidesApi.create>[0] = { title: title.trim(), content };
       if (avatarFile) { payload.avatar_file = avatarFile.data; payload.avatar_content_type = avatarFile.type; }
       await guidesApi.create(payload);
+      cacheInvalidate('guides');
       setShowForm(false); setTitle(''); setContent(''); setAvatarFile(null); setAvatarPreview(null);
       setPendingNotice(true);
       setTimeout(() => setPendingNotice(false), 6000);
@@ -100,7 +106,8 @@ export default function GuidesPage({ onOpenGuide, onOpenProfile }: Props) {
     if (!user) return;
     try {
       await guidesApi.vote(guideId, vote);
-      await load();
+      cacheInvalidate('guides');
+      await load(true);
     } catch { /* ignore */ }
   };
 

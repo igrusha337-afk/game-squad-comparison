@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { forumApi } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import { cacheGet, cacheSet, cacheInvalidate } from '@/lib/cache';
 import RichEditor from '@/components/RichEditor';
 import UserAvatar from '@/components/UserAvatar';
 import Icon from '@/components/ui/icon';
@@ -36,25 +37,29 @@ export default function ForumPage({ onOpenTopic, onOpenProfile }: ForumPageProps
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  const load = useCallback(async (force = false) => {
+    const cached = cacheGet<Topic[]>('forum-topics');
+    if (cached && !force) { setTopics(cached); setLoading(false); return; }
+    setLoading(true);
+    try {
+      const data = await forumApi.getTopics();
+      const list = data.topics || [];
+      cacheSet('forum-topics', list);
+      setTopics(list);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const handleVote = async (e: React.MouseEvent, topicId: number, vote: 1 | -1) => {
     e.stopPropagation();
     if (!user) return;
     try {
       await forumApi.voteTopic(topicId, vote);
-      const data = await forumApi.getTopics();
-      setTopics(data.topics || []);
+      cacheInvalidate('forum-topics');
+      await load(true);
     } catch { /* ignore */ }
   };
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await forumApi.getTopics();
-      setTopics(data.topics || []);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   useEffect(() => { load(); }, [load]);
 
@@ -68,6 +73,7 @@ export default function ForumPage({ onOpenTopic, onOpenProfile }: ForumPageProps
     setSubmitting(true); setError('');
     try {
       await forumApi.createTopic(title.trim(), content);
+      cacheInvalidate('forum-topics');
       setShowForm(false); setTitle(''); setContent('');
       setPendingNotice(true);
       setTimeout(() => setPendingNotice(false), 6000);

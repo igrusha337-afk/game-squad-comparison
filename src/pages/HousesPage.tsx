@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { housesApi } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import Icon from '@/components/ui/icon';
+import { cacheGet, cacheSet, cacheInvalidate } from '@/lib/cache';
 
 const SERVERS = [
   'EU1 Crystal Sea', 'EU2 Pantheon Warhall', 'EU3',
@@ -50,11 +51,15 @@ export default function HousesPage({ onOpenHouse, onOpenProfile }: Props) {
   const [error, setError] = useState('');
   const emblemRef = useRef<HTMLInputElement>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (force = false) => {
+    const cached = cacheGet<House[]>('houses');
+    if (cached && !force) { setHouses(cached); setLoading(false); return; }
     setLoading(true);
     try {
       const d = await housesApi.list();
-      setHouses(d.houses || []);
+      const list = d.houses || [];
+      cacheSet('houses', list);
+      setHouses(list);
     } finally {
       setLoading(false);
     }
@@ -81,7 +86,8 @@ export default function HousesPage({ onOpenHouse, onOpenProfile }: Props) {
       const res = await housesApi.create(payload);
       setShowForm(false); setName(''); setShortDesc(''); setEmblemFile(null); setEmblemPreview(null);
       updateUser({ house_id: res.house_id, house_name: name.trim() });
-      await load();
+      cacheInvalidate('houses');
+      await load(true);
       onOpenHouse(res.house_id);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Ошибка');
