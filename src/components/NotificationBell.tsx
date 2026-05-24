@@ -37,8 +37,6 @@ export default function NotificationBell({ onOpenTopic, onGoForum }: Props) {
 
   useEffect(() => {
     load();
-    const t = setInterval(load, 30000); // polling каждые 30 сек
-    return () => clearInterval(t);
   }, []);
 
   // Закрываем по клику вне

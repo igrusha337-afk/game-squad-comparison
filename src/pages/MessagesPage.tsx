@@ -54,7 +54,7 @@ export default function MessagesPage({ initialUserId, initialUsername, onOpenPro
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
 
   const loadConversations = useCallback(async () => {
     try {
@@ -82,9 +82,6 @@ export default function MessagesPage({ initialUserId, initialUsername, onOpenPro
   useEffect(() => {
     if (!activeUserId) return;
     loadMessages(activeUserId);
-    // Поллинг новых сообщений
-    pollRef.current = setInterval(() => loadMessages(activeUserId), 4000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [activeUserId, loadMessages]);
 
   useEffect(() => {
