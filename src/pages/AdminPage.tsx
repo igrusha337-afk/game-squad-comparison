@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { statsApi } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useUnits, useTreaties, useRoles, useFormations, useTraits, useAbilities } from '@/hooks/useAppData';
@@ -29,7 +29,7 @@ export default function AdminPage() {
   const [statsLoading, setStatsLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => setToast({ message, type });
+  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => setToast({ message, type }), []);
 
   const units$ = useAdminUnits(invalidateUnits, invalidateTreaties, showToast);
   const dict$ = useAdminDictionaries(invalidateRoles, invalidateFormations, invalidateTraits, invalidateAbilities, showToast);
