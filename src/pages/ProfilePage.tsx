@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { profileApi, housesApi } from '@/lib/api';
+import { cacheGet, cacheSet } from '@/lib/cache';
 import UserAvatar from '@/components/UserAvatar';
 import Icon from '@/components/ui/icon';
 
@@ -39,8 +40,12 @@ export default function ProfilePage({ onOpenMessages }: Props) {
 
   const loadHouses = useCallback(async () => {
     try {
+      const cached = cacheGet<{ id: number; name: string; server: string }[]>('houses-mini');
+      if (cached) { setAllHouses(cached); return; }
       const d = await housesApi.list();
-      setAllHouses((d.houses || []).map((h: { id: number; name: string; server: string }) => ({ id: h.id, name: h.name, server: h.server })));
+      const list = (d.houses || []).map((h: { id: number; name: string; server: string }) => ({ id: h.id, name: h.name, server: h.server }));
+      cacheSet('houses-mini', list);
+      setAllHouses(list);
     } catch { /* ignore */ }
   }, []);
 

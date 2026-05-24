@@ -56,8 +56,6 @@ export default function Index() {
   useEffect(() => {
     if (!user) { setUnreadMessages(0); return; }
     fetchUnread();
-    const interval = setInterval(fetchUnread, 30000);
-    return () => clearInterval(interval);
   }, [user, fetchUnread]);
 
   useEffect(() => {
