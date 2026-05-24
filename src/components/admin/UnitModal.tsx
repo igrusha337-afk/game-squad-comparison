@@ -70,6 +70,8 @@ export function UnitModal({ unit, onSave, onClose, availableRoles, availableForm
 
   const [selectedTraitIds, setSelectedTraitIds] = useState<number[]>(initSelectedTraitIds);
   const [selectedAbilityIds, setSelectedAbilityIds] = useState<number[]>(initSelectedAbilityIds);
+  const [traitSearch, setTraitSearch] = useState('');
+  const [abilitySearch, setAbilitySearch] = useState('');
   const [form, setForm] = useState<UnitFormData>({
     name: (unit?.name as string) || '',
     class: (unit?.class as UnitClass) || 'Пехота',
@@ -223,12 +225,23 @@ export function UnitModal({ unit, onSave, onClose, availableRoles, availableForm
 
           {/* Особенности */}
           <div>
-            <h4 className="text-xs text-muted-foreground uppercase tracking-widest mb-3">Особенности</h4>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-xs text-muted-foreground uppercase tracking-widest">Особенности</h4>
+              {availableTraits.length > 0 && (
+                <input
+                  type="text"
+                  value={traitSearch}
+                  onChange={e => setTraitSearch(e.target.value)}
+                  placeholder="Поиск..."
+                  className="bg-background border border-border rounded-sm px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary w-36"
+                />
+              )}
+            </div>
             {availableTraits.length === 0 ? (
               <p className="text-xs text-muted-foreground italic">Сначала создайте особенности в разделе «Особенности».</p>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {availableTraits.map(t => {
+                {availableTraits.filter(t => t.name.toLowerCase().includes(traitSearch.toLowerCase())).map(t => {
                   const selected = selectedTraitIds.includes(t.id);
                   const colorCls = t.color === 'green'
                     ? selected ? 'bg-green-900/40 border-green-500 text-green-400' : 'border-green-500/30 text-green-400/60 hover:border-green-500 hover:text-green-400'
@@ -250,12 +263,23 @@ export function UnitModal({ unit, onSave, onClose, availableRoles, availableForm
 
           {/* Умения */}
           <div>
-            <h4 className="text-xs text-muted-foreground uppercase tracking-widest mb-3">Умения</h4>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-xs text-muted-foreground uppercase tracking-widest">Умения</h4>
+              {availableAbilities.length > 0 && (
+                <input
+                  type="text"
+                  value={abilitySearch}
+                  onChange={e => setAbilitySearch(e.target.value)}
+                  placeholder="Поиск..."
+                  className="bg-background border border-border rounded-sm px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary w-36"
+                />
+              )}
+            </div>
             {availableAbilities.length === 0 ? (
               <p className="text-xs text-muted-foreground italic">Сначала создайте умения в разделе «Умения».</p>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {availableAbilities.map(a => {
+                {availableAbilities.filter(a => a.name.toLowerCase().includes(abilitySearch.toLowerCase())).map(a => {
                   const selected = selectedAbilityIds.includes(a.id);
                   const hasMods = Object.keys(a.statModifiers || {}).length > 0 || Object.keys(a.statModifiersEx || {}).length > 0;
                   return (
