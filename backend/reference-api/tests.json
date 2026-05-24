@@ -1,0 +1,8 @@
+{
+  "tests": [
+    {"name": "List roles", "method": "GET", "path": "/?type=roles", "expectedStatus": 200, "bodyMatcher": "partial"},
+    {"name": "List traits", "method": "GET", "path": "/?type=traits", "expectedStatus": 200, "bodyMatcher": "partial"},
+    {"name": "List abilities", "method": "GET", "path": "/?type=abilities", "expectedStatus": 200, "bodyMatcher": "partial"},
+    {"name": "List formations", "method": "GET", "path": "/?type=formations", "expectedStatus": 200, "bodyMatcher": "partial"}
+  ]
+}

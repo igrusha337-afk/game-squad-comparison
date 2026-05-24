@@ -6,11 +6,8 @@ const URLS = {
   upload: 'https://functions.poehali.dev/26151075-4ef3-4b29-8d16-c82a04dd0e83',
   forum: 'https://functions.poehali.dev/914f3bd8-b9e4-4dfa-b16a-e3dda3710d6e',
   battle: 'https://functions.poehali.dev/e55b6676-4af3-410b-99a4-d9faac5243bb',
-  rolesApi: 'https://functions.poehali.dev/36953fca-cdb1-4ebc-8482-8ba8556d1389',
-  formationsApi: 'https://functions.poehali.dev/d8bb45c5-f402-46c5-ac74-722186fd2a5d',
+  referenceApi: 'https://functions.poehali.dev/be68749b-b171-4cda-b1ff-a6df6ad8ae7f',
   gameApi: 'https://functions.poehali.dev/23edd385-7e13-41cb-a5d2-0a5cc4b4b5f7',
-  traitsApi: 'https://functions.poehali.dev/3cd2139d-ca43-4a19-8181-a5a301c48a6a',
-  abilitiesApi: 'https://functions.poehali.dev/d04cc806-fd7b-4125-8c81-68d4997e5bae',
   statsApi: 'https://functions.poehali.dev/702bf411-49ba-4d48-b8ae-b79614b4a03b',
   profileApi: 'https://functions.poehali.dev/d236c13e-b58c-46b9-b37c-4f4fab797124',
   messagesApi: 'https://functions.poehali.dev/9c322351-b8b6-4513-a2d3-b3658d79f8e0',
@@ -107,24 +104,24 @@ export const forumApi = {
 
 // Formations
 export const formationsApi = {
-  list: () => request(URLS.formationsApi),
+  list: () => request(`${URLS.referenceApi}?type=formations`),
   create: (data: { name: string; description: string; avatar_url: string }) =>
-    request(URLS.formationsApi, { method: 'POST', body: JSON.stringify({ action: 'create', ...data }) }),
+    request(URLS.referenceApi, { method: 'POST', body: JSON.stringify({ type: 'formations', action: 'create', ...data }) }),
   update: (id: number, data: { name: string; description: string; avatar_url: string }) =>
-    request(URLS.formationsApi, { method: 'POST', body: JSON.stringify({ action: 'update', id, ...data }) }),
+    request(URLS.referenceApi, { method: 'POST', body: JSON.stringify({ type: 'formations', action: 'update', id, ...data }) }),
   delete: (id: number) =>
-    request(URLS.formationsApi, { method: 'POST', body: JSON.stringify({ action: 'delete', id }) }),
+    request(URLS.referenceApi, { method: 'POST', body: JSON.stringify({ type: 'formations', action: 'delete', id }) }),
 };
 
 // Roles
 export const rolesApi = {
-  list: () => request(URLS.rolesApi),
+  list: () => request(`${URLS.referenceApi}?type=roles`),
   create: (data: { name: string; description: string }) =>
-    request(URLS.rolesApi, { method: 'POST', body: JSON.stringify({ action: 'create', ...data }) }),
+    request(URLS.referenceApi, { method: 'POST', body: JSON.stringify({ type: 'roles', action: 'create', ...data }) }),
   update: (id: number, data: { name: string; description: string }) =>
-    request(URLS.rolesApi, { method: 'POST', body: JSON.stringify({ action: 'update', id, ...data }) }),
+    request(URLS.referenceApi, { method: 'POST', body: JSON.stringify({ type: 'roles', action: 'update', id, ...data }) }),
   delete: (id: number) =>
-    request(URLS.rolesApi, { method: 'POST', body: JSON.stringify({ action: 'delete', id }) }),
+    request(URLS.referenceApi, { method: 'POST', body: JSON.stringify({ type: 'roles', action: 'delete', id }) }),
 };
 
 // Game
@@ -136,24 +133,24 @@ export const gameApi = {
 
 // Traits
 export const traitsApi = {
-  list: () => request(URLS.traitsApi),
+  list: () => request(`${URLS.referenceApi}?type=traits`),
   create: (data: { name: string; description: string; color: string }) =>
-    request(URLS.traitsApi, { method: 'POST', body: JSON.stringify({ action: 'create', ...data }) }),
+    request(URLS.referenceApi, { method: 'POST', body: JSON.stringify({ type: 'traits', action: 'create', ...data }) }),
   update: (id: number, data: { name: string; description: string; color: string }) =>
-    request(URLS.traitsApi, { method: 'POST', body: JSON.stringify({ action: 'update', id, ...data }) }),
+    request(URLS.referenceApi, { method: 'POST', body: JSON.stringify({ type: 'traits', action: 'update', id, ...data }) }),
   delete: (id: number) =>
-    request(URLS.traitsApi, { method: 'POST', body: JSON.stringify({ action: 'delete', id }) }),
+    request(URLS.referenceApi, { method: 'POST', body: JSON.stringify({ type: 'traits', action: 'delete', id }) }),
 };
 
 // Abilities
 export const abilitiesApi = {
-  list: () => request(URLS.abilitiesApi),
+  list: () => request(`${URLS.referenceApi}?type=abilities`),
   create: (data: { name: string; description: string; adminComment: string; statModifiers: Record<string, number>; statModifiersEx: Record<string, { value: number; type: string }> }) =>
-    request(URLS.abilitiesApi, { method: 'POST', body: JSON.stringify({ action: 'create', ...data }) }),
+    request(URLS.referenceApi, { method: 'POST', body: JSON.stringify({ type: 'abilities', action: 'create', ...data }) }),
   update: (id: number, data: { name: string; description: string; adminComment: string; statModifiers: Record<string, number>; statModifiersEx: Record<string, { value: number; type: string }> }) =>
-    request(URLS.abilitiesApi, { method: 'POST', body: JSON.stringify({ action: 'update', id, ...data }) }),
+    request(URLS.referenceApi, { method: 'POST', body: JSON.stringify({ type: 'abilities', action: 'update', id, ...data }) }),
   delete: (id: number) =>
-    request(URLS.abilitiesApi, { method: 'POST', body: JSON.stringify({ action: 'delete', id }) }),
+    request(URLS.referenceApi, { method: 'POST', body: JSON.stringify({ type: 'abilities', action: 'delete', id }) }),
 };
 
 // Stats

@@ -12,9 +12,16 @@ import { statsApi } from "@/lib/api";
 
 const queryClient = new QueryClient();
 
+const trackCache: Record<string, number> = {};
+const TRACK_TTL = 5 * 60 * 1000;
+
 function PageTracker() {
   const location = useLocation();
   useEffect(() => {
+    const now = Date.now();
+    const last = trackCache[location.pathname] || 0;
+    if (now - last < TRACK_TTL) return;
+    trackCache[location.pathname] = now;
     statsApi.track(location.pathname);
   }, [location.pathname]);
   return null;
