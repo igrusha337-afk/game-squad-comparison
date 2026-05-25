@@ -26,12 +26,39 @@ export function getAbilityName(ab: string | Ability): string {
 }
 
 // ── Тултип умения ──
-function AbilityTooltip({ ability }: { ability: Ability }) {
+function AbilityTooltip({ ability, anchorRef }: { ability: Ability; anchorRef: React.RefObject<HTMLSpanElement> }) {
   const hasModifiers =
     (ability.statModifiers != null && Object.keys(ability.statModifiers).length > 0) ||
     (ability.statModifiersEx != null && Object.keys(ability.statModifiersEx).length > 0);
-  return (
-    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-56 bg-card border border-border rounded-sm p-3 shadow-xl pointer-events-none">
+
+  const tooltipRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const anchor = anchorRef.current;
+    const tooltip = tooltipRef.current;
+    if (!anchor || !tooltip) return;
+    const rect = anchor.getBoundingClientRect();
+    const tw = tooltip.offsetWidth;
+    const th = tooltip.offsetHeight;
+    const margin = 8;
+
+    let left = rect.left + rect.width / 2 - tw / 2;
+    let top = rect.top - th - margin;
+
+    if (left < margin) left = margin;
+    if (left + tw > window.innerWidth - margin) left = window.innerWidth - tw - margin;
+    if (top < margin) top = rect.bottom + margin;
+
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+  }, [anchorRef]);
+
+  return createPortal(
+    <div
+      ref={tooltipRef}
+      style={{ position: 'fixed', zIndex: 9999, width: '224px' }}
+      className="bg-card border border-border rounded-sm p-3 shadow-xl pointer-events-none"
+    >
       <div className="text-xs font-semibold text-foreground mb-1">{ability.name}</div>
       {ability.description && (
         <p className="text-[11px] text-muted-foreground leading-relaxed mb-2">{ability.description}</p>
@@ -50,13 +77,14 @@ function AbilityTooltip({ ability }: { ability: Ability }) {
           ))}
         </div>
       )}
-      <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-border" />
-    </div>
+    </div>,
+    document.body
   );
 }
 
 export function AbilityTag({ ab }: { ab: string | Ability }) {
   const [show, setShow] = useState(false);
+  const anchorRef = useRef<HTMLSpanElement>(null);
   const obj = getAbilityObj(ab);
   const name = getAbilityName(ab);
   const hasModifiers = obj && (
@@ -68,6 +96,7 @@ export function AbilityTag({ ab }: { ab: string | Ability }) {
   return (
     <div className="relative inline-block">
       <span
+        ref={anchorRef}
         onMouseEnter={() => hasInfo && setShow(true)}
         onMouseLeave={() => setShow(false)}
         className={`inline-flex items-center gap-1.5 border rounded-sm px-3 py-1.5 text-xs transition-colors select-none
@@ -79,7 +108,7 @@ export function AbilityTag({ ab }: { ab: string | Ability }) {
         {name}
         {hasInfo && <Icon name="Info" size={10} className="text-muted-foreground opacity-60" />}
       </span>
-      {show && hasInfo && obj && <AbilityTooltip ability={obj} />}
+      {show && hasInfo && obj && <AbilityTooltip ability={obj} anchorRef={anchorRef} />}
     </div>
   );
 }
