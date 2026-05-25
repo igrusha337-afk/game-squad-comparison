@@ -24,9 +24,9 @@ export default function UnitHeader({ unit, unitFormations }: UnitHeaderProps) {
       {/* Header */}
       <div className={`bg-card border border-rarity-${unit.rarity} rounded-sm p-6`}>
         <div className="flex items-center gap-4 mb-4">
-          <div className="w-14 h-14 rounded-sm bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+          <div className="w-16 rounded-sm bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden border border-border" style={{ aspectRatio: '3/4' }}>
             {unit.avatar_url ? (
-              <img src={unit.avatar_url} alt={unit.name} className="w-full h-full object-cover" />
+              <img src={unit.avatar_url} alt={unit.name} className="w-full h-full object-contain" />
             ) : (
               <Icon name={CLASS_ICONS[unit.class] || 'Shield'} size={28} className="text-primary" />
             )}
