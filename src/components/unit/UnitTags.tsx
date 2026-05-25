@@ -231,7 +231,7 @@ export function GuideSection({ title, icon, blocks }: { title: string; icon: str
         {blocks.map((block, i) => (
           block.type === 'image' ? (
             <div key={i} className="rounded-sm overflow-hidden border border-border">
-              <img src={block.content} alt="" className="w-full object-cover max-h-80" style={{ display: 'block' }} />
+              <img src={block.content} alt="" className="w-full object-contain" style={{ display: 'block' }} />
             </div>
           ) : (
             <p key={i} className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
