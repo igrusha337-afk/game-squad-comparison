@@ -69,6 +69,7 @@ function apiToUnit(u: Record<string, unknown>): Unit {
     guide_gameplay: Array.isArray(u.guide_gameplay) ? u.guide_gameplay : [],
     stats: (u.stats as UnitStats) || {} as UnitStats,
     formations: Array.isArray(u.formations) ? (u.formations as number[]) : [],
+    subtype: (u.subtype as Unit['subtype']) || '',
   };
 }
 
@@ -79,6 +80,7 @@ function apiToTreaty(t: Record<string, unknown>): Treaty {
     name: t.name as string,
     description: (t.description as string) || '',
     compatibleClasses: (t.compatibleClasses as Treaty['compatibleClasses']) || [],
+    compatibleSubtypes: (t.compatibleSubtypes as Treaty['compatibleSubtypes']) || [],
     rarity: t.rarity as Treaty['rarity'],
     statModifiers: (t.statModifiers as Partial<UnitStats>) || {},
     statModifiersEx: (t.statModifiersEx as Partial<Record<keyof UnitStats, StatModifierEntry>>) || undefined,
