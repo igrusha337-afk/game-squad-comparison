@@ -202,9 +202,14 @@ export default function TreatiesPage({ appliedTreaties, onApply, onRemove }: Tre
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <span className="font-medium text-sm text-foreground">{t.name}</span>
                             <RarityBadge rarity={t.rarity} />
+                            {t.categoryId && CATEGORIES.find(c => c.id === t.categoryId) && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-sm border border-border text-muted-foreground">
+                                {CATEGORIES.find(c => c.id === t.categoryId)!.name}
+                              </span>
+                            )}
                           </div>
                           <p className="text-xs text-muted-foreground mb-2 leading-relaxed">{t.description}</p>
                           <div className="flex flex-wrap gap-1">

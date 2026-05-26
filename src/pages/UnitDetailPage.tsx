@@ -17,7 +17,7 @@ interface UnitDetailPageProps {
 
 export default function UnitDetailPage({ unitId, appliedTreaties, onBack, onApplyTreaty, onRemoveTreaty }: UnitDetailPageProps) {
   const { units } = useUnits();
-  const { treaties } = useTreaties();
+  const { treaties, categories } = useTreaties();
   const { formations: allFormations } = useFormations();
 
   const unit = units.find(u => u.id === unitId);
@@ -80,6 +80,7 @@ export default function UnitDetailPage({ unitId, appliedTreaties, onBack, onAppl
           activeAbilities={activeAbilities}
           onApplyTreaty={onApplyTreaty}
           onRemoveTreaty={onRemoveTreaty}
+          categories={categories}
         />
       </div>
     </div>

@@ -25,11 +25,12 @@ function getAbilityBonus(unit: Unit, key: keyof UnitStats): number {
 
 export default function ComparePage({ appliedTreaties, onApply, onRemove }: ComparePageProps) {
   const { units: UNITS, loading: unitsLoading } = useUnits();
-  const { treaties: TREATIES } = useTreaties();
+  const { treaties: TREATIES, categories: CATEGORIES } = useTreaties();
   const [selected, setSelected] = useState<string[]>([]);
   const [picker, setPicker] = useState(false);
   const [treatyPanelUnit, setTreatyPanelUnit] = useState<string | null>(null);
   const [activeGroup, setActiveGroup] = useState(0);
+  const [filterCategoryId, setFilterCategoryId] = useState<number | null>(null);
 
   const selectedUnits = UNITS.filter(u => selected.includes(u.id));
 
@@ -46,11 +47,9 @@ export default function ComparePage({ appliedTreaties, onApply, onRemove }: Comp
       }, 0);
   };
 
-  // Итоговое значение с трактатами И умениями
   const getTotal = (unit: Unit, key: keyof UnitStats) =>
     unit.stats[key] + getTreatyBonus(unit, key) + getAbilityBonus(unit, key);
 
-  // Лучшее итоговое значение среди выбранных
   const getBest = (key: keyof UnitStats) => {
     if (selectedUnits.length < 2) return null;
     return Math.max(...selectedUnits.map(u => getTotal(u, key)));
@@ -64,10 +63,27 @@ export default function ComparePage({ appliedTreaties, onApply, onRemove }: Comp
   };
 
   const treatyPanelUnitObj = treatyPanelUnit ? UNITS.find(u => u.id === treatyPanelUnit) : null;
+
   const compatibleTreaties = treatyPanelUnitObj
-    ? TREATIES.filter(t => t.compatibleClasses.includes(treatyPanelUnitObj.class))
+    ? TREATIES.filter(t => {
+        const unitSubtype = treatyPanelUnitObj.subtype || '';
+        const subtypes = t.compatibleSubtypes;
+        if (subtypes && subtypes.length > 0) {
+          if (!unitSubtype || !subtypes.includes(unitSubtype as never)) return false;
+        } else if (t.compatibleClasses.length > 0 && !t.compatibleClasses.includes(treatyPanelUnitObj.class)) {
+          return false;
+        }
+        return true;
+      })
     : [];
+
+  const filteredTreaties = filterCategoryId !== null
+    ? compatibleTreaties.filter(t => t.categoryId === filterCategoryId)
+    : compatibleTreaties;
+
   const activeTreatyIds = treatyPanelUnit ? (appliedTreaties[treatyPanelUnit] || []) : [];
+  const categoryName = (categoryId?: number | null) =>
+    categoryId ? CATEGORIES.find(c => c.id === categoryId)?.name : undefined;
 
   const currentGroupStats = STAT_GROUPS[activeGroup].stats;
 
@@ -344,11 +360,30 @@ export default function ComparePage({ appliedTreaties, onApply, onRemove }: Comp
                 </button>
               </div>
 
+              {CATEGORIES.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-4">
+                  <button
+                    onClick={() => setFilterCategoryId(null)}
+                    className={`px-2.5 py-1 text-[10px] rounded-sm border transition-colors ${filterCategoryId === null ? 'bg-primary/10 border-primary text-primary' : 'border-border text-muted-foreground hover:border-foreground/40'}`}>
+                    Все
+                  </button>
+                  {CATEGORIES.map(c => (
+                    <button key={c.id}
+                      onClick={() => setFilterCategoryId(filterCategoryId === c.id ? null : c.id)}
+                      className={`px-2.5 py-1 text-[10px] rounded-sm border transition-colors ${filterCategoryId === c.id ? 'bg-primary/10 border-primary text-primary' : 'border-border text-muted-foreground hover:border-foreground/40'}`}>
+                      {c.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {compatibleTreaties.length === 0 ? (
                 <p className="text-xs text-muted-foreground">Нет совместимых трактатов</p>
+              ) : filteredTreaties.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Нет трактатов в этой категории</p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {compatibleTreaties.map(t => {
+                  {filteredTreaties.map(t => {
                     const applied = activeTreatyIds.includes(t.id);
                     return (
                       <div
@@ -364,7 +399,12 @@ export default function ComparePage({ appliedTreaties, onApply, onRemove }: Comp
                             )}
                             <div className="min-w-0">
                               <div className="text-xs font-medium text-foreground leading-tight mb-0.5 truncate">{t.name}</div>
-                              <RarityBadge rarity={t.rarity} />
+                              <div className="flex items-center gap-1.5">
+                                <RarityBadge rarity={t.rarity} />
+                                {categoryName(t.categoryId) && (
+                                  <span className="text-[10px] text-muted-foreground">{categoryName(t.categoryId)}</span>
+                                )}
+                              </div>
                             </div>
                           </div>
                           <button

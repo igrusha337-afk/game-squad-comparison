@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Unit, UnitStats } from '@/data/types';
+import { Unit, UnitStats, TreatyCategory } from '@/data/types';
 import { Treaty } from '@/data/types';
 import RarityBadge from '@/components/RarityBadge';
 import Icon from '@/components/ui/icon';
@@ -12,6 +12,7 @@ interface UnitSidebarProps {
   activeAbilities: (string | import('@/data/types').Ability)[];
   onApplyTreaty?: (unitId: string, treatyId: string) => void;
   onRemoveTreaty?: (unitId: string, treatyId: string) => void;
+  categories?: TreatyCategory[];
 }
 
 export default function UnitSidebar({
@@ -21,11 +22,19 @@ export default function UnitSidebar({
   activeAbilities,
   onApplyTreaty,
   onRemoveTreaty,
+  categories = [],
 }: UnitSidebarProps) {
   const [showAvailable, setShowAvailable] = useState(false);
+  const [filterCategoryId, setFilterCategoryId] = useState<number | null>(null);
 
-  const filteredAvailable = availableTreaties;
   const unitSubtype = unit.subtype || '';
+
+  const filteredAvailable = filterCategoryId !== null
+    ? availableTreaties.filter(t => t.categoryId === filterCategoryId)
+    : availableTreaties;
+
+  const categoryName = (t: Treaty) =>
+    t.categoryId ? categories.find(c => c.id === t.categoryId)?.name : undefined;
 
   return (
     <div className="space-y-4">
@@ -48,7 +57,7 @@ export default function UnitSidebar({
       <div className="bg-card border border-border rounded-sm p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Трактаты</h2>
-          {onApplyTreaty && filteredAvailable.length > 0 && (
+          {onApplyTreaty && availableTreaties.length > 0 && (
             <button
               onClick={() => setShowAvailable(v => !v)}
               className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest transition-colors px-2 py-1 rounded-sm"
@@ -77,7 +86,12 @@ export default function UnitSidebar({
                       <img src={t.avatar_url} alt={t.name} className="w-full h-full object-cover" />
                     </div>
                   )}
-                  <span className="text-xs font-medium text-foreground flex-1">{t.name}</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs font-medium text-foreground block truncate">{t.name}</span>
+                    {categoryName(t) && (
+                      <span className="text-[10px] text-muted-foreground">{categoryName(t)}</span>
+                    )}
+                  </div>
                   <RarityBadge rarity={t.rarity} />
                   {onRemoveTreaty && (
                     <button
@@ -108,46 +122,76 @@ export default function UnitSidebar({
         )}
 
         {/* Доступные трактаты */}
-        {showAvailable && filteredAvailable.length > 0 && (
-          <div className="mt-3 space-y-2">
-            <div className="text-[10px] text-muted-foreground uppercase tracking-widest mb-2 border-t border-border pt-3">
+        {showAvailable && (
+          <div className="mt-3 border-t border-border pt-3">
+            <div className="text-[10px] text-muted-foreground uppercase tracking-widest mb-2">
               Доступные{unitSubtype && <span className="ml-1 opacity-60">· {unitSubtype}</span>}
             </div>
-            {filteredAvailable.map(t => (
-              <div key={t.id} className="border border-border rounded-sm p-3 opacity-80 hover:opacity-100 transition-opacity">
-                <div className="flex items-center gap-2 mb-1.5">
-                  {t.avatar_url && (
-                    <div className="w-7 h-7 rounded-sm overflow-hidden flex-shrink-0 bg-muted">
-                      <img src={t.avatar_url} alt={t.name} className="w-full h-full object-cover" />
-                    </div>
-                  )}
-                  <span className="text-xs font-medium text-foreground flex-1">{t.name}</span>
-                  <RarityBadge rarity={t.rarity} />
-                  {onApplyTreaty && (
-                    <button
-                      onClick={() => onApplyTreaty(unit.id, t.id)}
-                      className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-sm transition-colors"
-                      style={{ color: 'hsl(150 48% 60%)', background: 'hsl(150 48% 20% / 0.2)', border: '1px solid hsl(150 48% 40% / 0.3)' }}
-                      title="Применить трактат"
-                    >
-                      <Icon name="Plus" size={10} />
-                    </button>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {Object.entries(t.statModifiers || {}).map(([stat, val]) => (
-                    <span key={stat} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${(val || 0) > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
-                      {STAT_LABEL_MAP[stat as keyof UnitStats] ?? stat}: {(val || 0) > 0 ? '+' : ''}{val}
-                    </span>
-                  ))}
-                  {Object.entries(t.statModifiersEx || {}).map(([stat, entry]) => (
-                    <span key={`ex-${stat}`} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${entry.value > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
-                      {STAT_LABEL_MAP[stat as keyof UnitStats] ?? stat}: {entry.value > 0 ? '+' : ''}{entry.value}%
-                    </span>
-                  ))}
-                </div>
+
+            {/* Фильтр по категориям */}
+            {categories.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-3">
+                <button
+                  onClick={() => setFilterCategoryId(null)}
+                  className={`px-2 py-0.5 text-[10px] rounded-sm border transition-colors ${filterCategoryId === null ? 'bg-primary/10 border-primary text-primary' : 'border-border text-muted-foreground hover:border-foreground/40'}`}>
+                  Все
+                </button>
+                {categories.map(c => (
+                  <button key={c.id}
+                    onClick={() => setFilterCategoryId(filterCategoryId === c.id ? null : c.id)}
+                    className={`px-2 py-0.5 text-[10px] rounded-sm border transition-colors ${filterCategoryId === c.id ? 'bg-primary/10 border-primary text-primary' : 'border-border text-muted-foreground hover:border-foreground/40'}`}>
+                    {c.name}
+                  </button>
+                ))}
               </div>
-            ))}
+            )}
+
+            {filteredAvailable.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">Нет трактатов в этой категории</p>
+            ) : (
+              <div className="space-y-2">
+                {filteredAvailable.map(t => (
+                  <div key={t.id} className="border border-border rounded-sm p-3 opacity-80 hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      {t.avatar_url && (
+                        <div className="w-7 h-7 rounded-sm overflow-hidden flex-shrink-0 bg-muted">
+                          <img src={t.avatar_url} alt={t.name} className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-xs font-medium text-foreground block truncate">{t.name}</span>
+                        {categoryName(t) && (
+                          <span className="text-[10px] text-muted-foreground">{categoryName(t)}</span>
+                        )}
+                      </div>
+                      <RarityBadge rarity={t.rarity} />
+                      {onApplyTreaty && (
+                        <button
+                          onClick={() => onApplyTreaty(unit.id, t.id)}
+                          className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-sm transition-colors"
+                          style={{ color: 'hsl(150 48% 60%)', background: 'hsl(150 48% 20% / 0.2)', border: '1px solid hsl(150 48% 40% / 0.3)' }}
+                          title="Применить трактат"
+                        >
+                          <Icon name="Plus" size={10} />
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {Object.entries(t.statModifiers || {}).map(([stat, val]) => (
+                        <span key={stat} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${(val || 0) > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                          {STAT_LABEL_MAP[stat as keyof UnitStats] ?? stat}: {(val || 0) > 0 ? '+' : ''}{val}
+                        </span>
+                      ))}
+                      {Object.entries(t.statModifiersEx || {}).map(([stat, entry]) => (
+                        <span key={`ex-${stat}`} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${entry.value > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                          {STAT_LABEL_MAP[stat as keyof UnitStats] ?? stat}: {entry.value > 0 ? '+' : ''}{entry.value}%
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
