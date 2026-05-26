@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import Index from "./pages/Index";
+import BuildPage from "./pages/BuildPage";
 import NotFound from "./pages/NotFound";
 import { statsApi } from "@/lib/api";
 
@@ -39,6 +40,7 @@ const App = () => (
 
             <Route path="/" element={<Index />} />
             <Route path="/unit/:unitId" element={<Index />} />
+            <Route path="/build/:buildId" element={<BuildPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

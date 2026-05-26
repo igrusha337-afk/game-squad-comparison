@@ -2,6 +2,7 @@ const URLS = {
   auth: 'https://functions.poehali.dev/23d99d84-1616-4b50-9313-b88ca1a4a272',
   unitsApi: 'https://functions.poehali.dev/1332b379-06bb-41c1-83f8-e8bc6369fd8e',
   treatiesApi: 'https://functions.poehali.dev/c9428367-4953-41ff-9034-681a2f9d5d89',
+  buildsApi: 'https://functions.poehali.dev/0f095936-748b-4a92-bdcb-14ee8f0ca92d',
   seed: 'https://functions.poehali.dev/95ab29ef-b38b-4e5b-9578-0456fb855829',
   upload: 'https://functions.poehali.dev/26151075-4ef3-4b29-8d16-c82a04dd0e83',
   forum: 'https://functions.poehali.dev/914f3bd8-b9e4-4dfa-b16a-e3dda3710d6e',
@@ -236,4 +237,14 @@ export const treatiesApi = {
     request(URLS.treatiesApi, { method: 'POST', body: JSON.stringify({ action: 'update_category', id, ...data }) }),
   deleteCategory: (id: number) =>
     request(URLS.treatiesApi, { method: 'POST', body: JSON.stringify({ action: 'delete_category', id }) }),
+};
+
+// Builds
+export const buildsApi = {
+  getById: (id: string) => request(`${URLS.buildsApi}?id=${id}`),
+  getMy: () => request(`${URLS.buildsApi}?action=my`),
+  create: (data: { unitId: string; treatyIds: string[]; title: string; description: string }) =>
+    request(URLS.buildsApi, { method: 'POST', body: JSON.stringify({ action: 'create', ...data }) }),
+  delete: (id: string) =>
+    request(URLS.buildsApi, { method: 'POST', body: JSON.stringify({ action: 'delete', id }) }),
 };

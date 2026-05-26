@@ -62,11 +62,14 @@ export default function Index() {
     if (page === 'messages') setUnreadMessages(0);
   }, [page]);
 
+  const TREATY_LIMIT = 5;
+
   const handleApplyTreaty = (unitId: string, treatyId: string) => {
-    setAppliedTreaties(prev => ({
-      ...prev,
-      [unitId]: [...(prev[unitId] || []), treatyId],
-    }));
+    setAppliedTreaties(prev => {
+      const current = prev[unitId] || [];
+      if (current.length >= TREATY_LIMIT) return prev;
+      return { ...prev, [unitId]: [...current, treatyId] };
+    });
   };
 
   const handleRemoveTreaty = (unitId: string, treatyId: string) => {

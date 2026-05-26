@@ -4,6 +4,10 @@ import { Treaty } from '@/data/types';
 import RarityBadge from '@/components/RarityBadge';
 import Icon from '@/components/ui/icon';
 import { STAT_LABEL_MAP, getAbilityObj } from './UnitTags';
+import SaveBuildModal from './SaveBuildModal';
+import { useAuth } from '@/context/AuthContext';
+
+const TREATY_LIMIT = 5;
 
 interface UnitSidebarProps {
   unit: Unit;
@@ -24,8 +28,12 @@ export default function UnitSidebar({
   onRemoveTreaty,
   categories = [],
 }: UnitSidebarProps) {
+  const { user } = useAuth();
   const [showAvailable, setShowAvailable] = useState(false);
   const [filterCategoryId, setFilterCategoryId] = useState<number | null>(null);
+  const [showSaveBuild, setShowSaveBuild] = useState(false);
+
+  const atLimit = myTreaties.length >= TREATY_LIMIT;
 
   const unitSubtype = unit.subtype || '';
 
@@ -56,21 +64,41 @@ export default function UnitSidebar({
       {/* Трактаты */}
       <div className="bg-card border border-border rounded-sm p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Трактаты</h2>
-          {onApplyTreaty && availableTreaties.length > 0 && (
-            <button
-              onClick={() => setShowAvailable(v => !v)}
-              className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest transition-colors px-2 py-1 rounded-sm"
-              style={{
-                color: showAvailable ? 'hsl(42 76% 68%)' : 'hsl(222 8% 55%)',
-                background: showAvailable ? 'hsl(42 76% 50% / 0.12)' : 'hsl(222 14% 14%)',
-                border: showAvailable ? '1px solid hsl(42 76% 50% / 0.35)' : '1px solid hsl(222 14% 20%)',
-              }}
-            >
-              <Icon name={showAvailable ? 'ChevronUp' : 'Plus'} size={10} />
-              {showAvailable ? 'Свернуть' : 'Добавить'}
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Трактаты</h2>
+            <span className={`text-[10px] font-mono-data px-1.5 py-0.5 rounded-sm border ${atLimit ? 'border-amber-500/40 text-amber-400 bg-amber-900/20' : 'border-border text-muted-foreground'}`}>
+              {myTreaties.length}/{TREATY_LIMIT}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {myTreaties.length > 0 && user && (
+              <button
+                onClick={() => setShowSaveBuild(true)}
+                className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-sm border border-border text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
+                title="Сохранить сборку и поделиться"
+              >
+                <Icon name="Share2" size={10} />
+                Поделиться
+              </button>
+            )}
+            {onApplyTreaty && !atLimit && availableTreaties.length > 0 && (
+              <button
+                onClick={() => setShowAvailable(v => !v)}
+                className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest transition-colors px-2 py-1 rounded-sm"
+                style={{
+                  color: showAvailable ? 'hsl(42 76% 68%)' : 'hsl(222 8% 55%)',
+                  background: showAvailable ? 'hsl(42 76% 50% / 0.12)' : 'hsl(222 14% 14%)',
+                  border: showAvailable ? '1px solid hsl(42 76% 50% / 0.35)' : '1px solid hsl(222 14% 20%)',
+                }}
+              >
+                <Icon name={showAvailable ? 'ChevronUp' : 'Plus'} size={10} />
+                {showAvailable ? 'Свернуть' : 'Добавить'}
+              </button>
+            )}
+            {atLimit && (
+              <span className="text-[10px] text-amber-400 font-medium">Лимит достигнут</span>
+            )}
+          </div>
         </div>
 
         {/* Применённые трактаты */}
@@ -220,6 +248,14 @@ export default function UnitSidebar({
             })}
           </div>
         </div>
+      )}
+      {showSaveBuild && (
+        <SaveBuildModal
+          unitId={unit.id}
+          unitName={unit.name}
+          treaties={myTreaties}
+          onClose={() => setShowSaveBuild(false)}
+        />
       )}
     </div>
   );

@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "Get nonexistent build",
+      "method": "GET",
+      "path": "/?id=00000000-0000-0000-0000-000000000000",
+      "expectedStatus": 404,
+      "expectedBody": {"error": "Сборка не найдена"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
