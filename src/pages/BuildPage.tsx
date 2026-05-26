@@ -5,8 +5,10 @@ import { useUnits, useTreaties } from '@/hooks/useAppData';
 import { Treaty, UnitStats } from '@/data/types';
 import { ALL_STATS } from '@/data/statGroups';
 import RarityBadge from '@/components/RarityBadge';
+
 import Icon from '@/components/ui/icon';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
+import UnitStatsPanel from '@/components/unit/UnitStatsPanel';
 
 interface Build {
   id: string;
@@ -26,18 +28,7 @@ const getStatLabel = (key: string) => {
   return found ? found.label : key;
 };
 
-function calcTotalBonus(treaties: Treaty[], key: keyof UnitStats, baseStats?: Record<string, number>): number {
-  return treaties.reduce((acc, t) => {
-    const ex = t.statModifiersEx?.[key];
-    if (ex) {
-      if (ex.type === 'percent' && baseStats) {
-        return acc + Math.round((baseStats[key] || 0) * ex.value / 100);
-      }
-      return acc + ex.value;
-    }
-    return acc + ((t.statModifiers[key] as number) || 0);
-  }, 0);
-}
+
 
 export default function BuildPage() {
   const { buildId } = useParams<{ buildId: string }>();
@@ -89,14 +80,6 @@ export default function BuildPage() {
       </a>
     </div>
   );
-
-  // Суммарные бонусы
-  const allStatKeys = new Set<string>();
-  treaties.forEach(t => {
-    Object.keys(t.statModifiers).forEach(k => allStatKeys.add(k));
-    Object.keys(t.statModifiersEx || {}).forEach(k => allStatKeys.add(k));
-  });
-  const baseStats = unit ? (unit.stats as unknown as Record<string, number>) : undefined;
 
   return (
     <div className="min-h-screen bg-background">
@@ -182,25 +165,20 @@ export default function BuildPage() {
           </div>
         </div>
 
-        {/* Суммарные бонусы */}
-        {allStatKeys.size > 0 && (
-          <div className="bg-card border border-border rounded-sm p-5">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-4">
-              Суммарные бонусы от всех трактатов
+        {/* Характеристики отряда с бонусами трактатов */}
+        {unit && (
+          <div className="space-y-4">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+              Характеристики отряда
             </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {[...allStatKeys].map(key => {
-                const total = calcTotalBonus(treaties, key as keyof UnitStats, baseStats);
-                return (
-                  <div key={key} className={`flex items-center justify-between px-3 py-2 rounded-sm border ${total > 0 ? 'border-green-500/20 bg-green-900/10' : 'border-red-500/20 bg-red-900/10'}`}>
-                    <span className="text-xs text-muted-foreground truncate mr-2">{getStatLabel(key)}</span>
-                    <span className={`font-mono-data text-sm font-semibold ${total > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {total > 0 ? '+' : ''}{total}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+            <UnitStatsPanel
+              unit={unit}
+              myTreaties={treaties.map(t => ({
+                id: t.id,
+                statModifiers: t.statModifiers as Partial<Record<keyof UnitStats, number>>,
+                statModifiersEx: t.statModifiersEx as Partial<Record<keyof UnitStats, { type: string; value: number }>>,
+              }))}
+            />
           </div>
         )}
 
