@@ -2,6 +2,45 @@ export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 export type UnitClass = 'Пехота' | 'Кавалерия' | 'Стрелки' | 'Осадные';
 export type UnitRole = 'Танк' | 'Борьба с кавалерией' | string;
 
+export type UnitSubtype =
+  | 'Пехота ближнего боя - баклер'
+  | 'Пехота ближнего боя - большой щит'
+  | 'Пехота ближнего боя - пики'
+  | 'Пехота ближнего боя - дротики'
+  | 'Пехота ближнего боя - особый'
+  | 'Стрелковая пехота - лучники'
+  | 'Стрелковая пехота - арбалетчики'
+  | 'Стрелковая пехота - аркебузиры'
+  | 'Стрелковая пехота - особый'
+  | 'Кавалерия - копейщик'
+  | 'Кавалерия - ближний бой'
+  | 'Кавалерия - лучник'
+  | 'Кавалерия - особый';
+
+export function parseUnitSubtype(description: string): UnitSubtype | null {
+  const d = description.toLowerCase().replace(/[–—]/g, '-').trim();
+  if (d.startsWith('пехота ближнего боя')) {
+    if (d.includes('баклер')) return 'Пехота ближнего боя - баклер';
+    if (d.includes('большой щит')) return 'Пехота ближнего боя - большой щит';
+    if (d.includes('пик')) return 'Пехота ближнего боя - пики';
+    if (d.includes('дротик')) return 'Пехота ближнего боя - дротики';
+    if (d.includes('особ')) return 'Пехота ближнего боя - особый';
+  }
+  if (d.startsWith('стрелковая пехота')) {
+    if (d.includes('лучник')) return 'Стрелковая пехота - лучники';
+    if (d.includes('арбалет')) return 'Стрелковая пехота - арбалетчики';
+    if (d.includes('аркебуз')) return 'Стрелковая пехота - аркебузиры';
+    if (d.includes('особ')) return 'Стрелковая пехота - особый';
+  }
+  if (d.startsWith('кавалерия')) {
+    if (d.includes('копейщик') || d.includes('копейщики')) return 'Кавалерия - копейщик';
+    if (d.includes('ближний бой')) return 'Кавалерия - ближний бой';
+    if (d.includes('лучник')) return 'Кавалерия - лучник';
+    if (d.includes('особ')) return 'Кавалерия - особый';
+  }
+  return null;
+}
+
 export type TraitColor = 'green' | 'gray' | 'red';
 
 export interface Trait {
@@ -50,6 +89,7 @@ export interface Treaty {
   statModifiers: Partial<UnitStats>;
   statModifiersEx?: Partial<Record<keyof UnitStats, StatModifierEntry>>;
   compatibleClasses: UnitClass[];
+  compatibleSubtypes?: UnitSubtype[];
   rarity: Rarity;
   avatar_url?: string;
 }

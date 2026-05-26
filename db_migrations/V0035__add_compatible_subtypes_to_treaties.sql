@@ -1,0 +1,1 @@
+ALTER TABLE treaties ADD COLUMN IF NOT EXISTS compatible_subtypes text[] DEFAULT '{}';

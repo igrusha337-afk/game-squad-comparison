@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Rarity, UnitClass } from '@/data/types';
+import { Rarity, UnitClass, UnitSubtype } from '@/data/types';
 import Icon from '@/components/ui/icon';
 import AvatarUpload from '@/components/AvatarUpload';
-import { UNIT_CLASSES, RARITIES, RARITY_LABELS, DEFAULT_UNIT_STATS, STAT_LABELS } from './adminConstants';
+import { UNIT_CLASSES, UNIT_SUBTYPES, SUBTYPE_CLASS, RARITIES, RARITY_LABELS, DEFAULT_UNIT_STATS, STAT_LABELS } from './adminConstants';
 
 interface ModifierEntry {
   value: string;
@@ -30,6 +30,7 @@ export function TreatyModal({ treaty, onSave, onClose }: {
   const [description, setDescription] = useState((treaty?.description as string) || '');
   const [rarity, setRarity] = useState<Rarity>((treaty?.rarity as Rarity) || 'common');
   const [classes, setClasses] = useState<UnitClass[]>((treaty?.compatibleClasses as UnitClass[]) || []);
+  const [subtypes, setSubtypes] = useState<UnitSubtype[]>((treaty?.compatibleSubtypes as UnitSubtype[]) || []);
   const [avatarUrl, setAvatarUrl] = useState((treaty?.avatar_url as string) || '');
   const [modifiers, setModifiers] = useState<Record<string, ModifierEntry>>(initModifiers(treaty));
   const [newModKey, setNewModKey] = useState('health');
@@ -39,7 +40,11 @@ export function TreatyModal({ treaty, onSave, onClose }: {
   const inputCls = "w-full bg-background border border-border rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
   const statOptions = Object.keys(DEFAULT_UNIT_STATS);
 
-  const toggleClass = (cls: UnitClass) => setClasses(prev => prev.includes(cls) ? prev.filter(c => c !== cls) : [...prev, cls]);
+  const toggleClass = (cls: UnitClass) => {
+    setClasses(prev => prev.includes(cls) ? prev.filter(c => c !== cls) : [...prev, cls]);
+    setSubtypes(prev => prev.filter(st => SUBTYPE_CLASS[st] !== cls || classes.includes(cls)));
+  };
+  const toggleSubtype = (st: UnitSubtype) => setSubtypes(prev => prev.includes(st) ? prev.filter(s => s !== st) : [...prev, st]);
   const addModifier = () => {
     if (!newModVal) return;
     setModifiers(prev => ({ ...prev, [newModKey]: { value: newModVal, type: newModType } }));
@@ -65,7 +70,7 @@ export function TreatyModal({ treaty, onSave, onClose }: {
           else statModifiers[k] = n;
         }
       }
-      await onSave({ name: name.trim(), description, rarity, compatibleClasses: classes, statModifiers, statModifiersEx, avatar_url: avatarUrl });
+      await onSave({ name: name.trim(), description, rarity, compatibleClasses: classes, compatibleSubtypes: subtypes, statModifiers, statModifiersEx, avatar_url: avatarUrl });
       onClose();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Ошибка сохранения');
@@ -112,6 +117,26 @@ export function TreatyModal({ treaty, onSave, onClose }: {
                 </button>
               ))}
             </div>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground block mb-1.5">Совместимые подтипы <span className="opacity-50">(опционально — уточняет совместимость)</span></label>
+            <div className="flex flex-wrap gap-1.5">
+              {UNIT_SUBTYPES.map(st => {
+                const cls = SUBTYPE_CLASS[st];
+                const classActive = classes.length === 0 || classes.includes(cls);
+                return (
+                  <button key={st} type="button" onClick={() => toggleSubtype(st)}
+                    disabled={!classActive}
+                    className={`px-2.5 py-1 text-[11px] rounded-sm border transition-colors disabled:opacity-30 disabled:cursor-not-allowed
+                      ${subtypes.includes(st) ? 'bg-primary/10 border-primary text-primary' : 'border-border text-muted-foreground hover:border-foreground/40'}`}>
+                    {st}
+                  </button>
+                );
+              })}
+            </div>
+            {subtypes.length > 0 && (
+              <p className="text-[10px] text-muted-foreground mt-1.5">Выбрано: {subtypes.length} подтип(ов). Трактат будет доступен только для этих подтипов.</p>
+            )}
           </div>
           <div>
             <label className="text-xs text-muted-foreground block mb-2">Модификаторы характеристик</label>

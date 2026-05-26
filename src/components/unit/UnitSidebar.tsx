@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Unit, UnitStats } from '@/data/types';
+import { Unit, UnitStats, parseUnitSubtype } from '@/data/types';
 import { Treaty } from '@/data/types';
 import RarityBadge from '@/components/RarityBadge';
 import Icon from '@/components/ui/icon';
@@ -24,6 +24,21 @@ export default function UnitSidebar({
 }: UnitSidebarProps) {
   const [showAvailable, setShowAvailable] = useState(false);
 
+  const unitSubtype = parseUnitSubtype(unit.description || '');
+
+  const isTreatyCompatible = (t: Treaty) => {
+    const subtypes = t.compatibleSubtypes;
+    if (subtypes && subtypes.length > 0) {
+      return unitSubtype ? subtypes.includes(unitSubtype) : false;
+    }
+    if (t.compatibleClasses && t.compatibleClasses.length > 0) {
+      return t.compatibleClasses.includes(unit.class);
+    }
+    return true;
+  };
+
+  const filteredAvailable = availableTreaties.filter(isTreatyCompatible);
+
   return (
     <div className="space-y-4">
       {/* Экономика */}
@@ -45,7 +60,7 @@ export default function UnitSidebar({
       <div className="bg-card border border-border rounded-sm p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Трактаты</h2>
-          {onApplyTreaty && availableTreaties.length > 0 && (
+          {onApplyTreaty && filteredAvailable.length > 0 && (
             <button
               onClick={() => setShowAvailable(v => !v)}
               className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest transition-colors px-2 py-1 rounded-sm"
@@ -105,10 +120,12 @@ export default function UnitSidebar({
         )}
 
         {/* Доступные трактаты */}
-        {showAvailable && availableTreaties.length > 0 && (
+        {showAvailable && filteredAvailable.length > 0 && (
           <div className="mt-3 space-y-2">
-            <div className="text-[10px] text-muted-foreground uppercase tracking-widest mb-2 border-t border-border pt-3">Доступные</div>
-            {availableTreaties.map(t => (
+            <div className="text-[10px] text-muted-foreground uppercase tracking-widest mb-2 border-t border-border pt-3">
+              Доступные{unitSubtype && <span className="ml-1 opacity-60">· {unitSubtype}</span>}
+            </div>
+            {filteredAvailable.map(t => (
               <div key={t.id} className="border border-border rounded-sm p-3 opacity-80 hover:opacity-100 transition-opacity">
                 <div className="flex items-center gap-2 mb-1.5">
                   {t.avatar_url && (
