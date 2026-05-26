@@ -1,9 +1,20 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { profileApi, housesApi } from '@/lib/api';
+import { profileApi, housesApi, buildsApi } from '@/lib/api';
+import { useUnits, useTreaties } from '@/hooks/useAppData';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import UserAvatar from '@/components/UserAvatar';
 import Icon from '@/components/ui/icon';
+
+interface Build {
+  id: string;
+  unitId: string;
+  treatyIds: string[];
+  title: string;
+  description: string;
+  views: number;
+  createdAt: string;
+}
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -20,6 +31,8 @@ interface Props {
 
 export default function ProfilePage({ onOpenMessages }: Props) {
   const { user, loading: authLoading, updateUser } = useAuth();
+  const { units } = useUnits();
+  const { treaties } = useTreaties();
   const [bio, setBio] = useState(user?.bio || '');
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '');
   const [coverUrl, setCoverUrl] = useState(user?.cover_url || '');
@@ -38,6 +51,12 @@ export default function ProfilePage({ onOpenMessages }: Props) {
   const [joiningHouse, setJoiningHouse] = useState(false);
   const [leavingHouse, setLeavingHouse] = useState(false);
 
+  // Сборки
+  const [builds, setBuilds] = useState<Build[]>([]);
+  const [buildsLoading, setBuildsLoading] = useState(false);
+  const [deletingBuildId, setDeletingBuildId] = useState<string | null>(null);
+  const [copiedBuildId, setCopiedBuildId] = useState<string | null>(null);
+
   const loadHouses = useCallback(async () => {
     try {
       const cached = cacheGet<{ id: number; name: string; server: string }[]>('houses-mini');
@@ -49,7 +68,18 @@ export default function ProfilePage({ onOpenMessages }: Props) {
     } catch { /* ignore */ }
   }, []);
 
+  const loadBuilds = useCallback(async () => {
+    if (!user) return;
+    setBuildsLoading(true);
+    try {
+      const res = await buildsApi.getMy();
+      setBuilds(res.builds || []);
+    } catch { /* ignore */ }
+    finally { setBuildsLoading(false); }
+  }, [user]);
+
   useEffect(() => { loadHouses(); }, [loadHouses]);
+  useEffect(() => { loadBuilds(); }, [loadBuilds]);
 
   const handleJoinHouse = async (houseId: number, houseName: string) => {
     setJoiningHouse(true);
@@ -70,6 +100,22 @@ export default function ProfilePage({ onOpenMessages }: Props) {
     } finally {
       setLeavingHouse(false);
     }
+  };
+
+  const handleDeleteBuild = async (id: string) => {
+    if (!confirm('Удалить сборку?')) return;
+    setDeletingBuildId(id);
+    try {
+      await buildsApi.delete(id);
+      setBuilds(prev => prev.filter(b => b.id !== id));
+    } catch { /* ignore */ }
+    finally { setDeletingBuildId(null); }
+  };
+
+  const handleCopyBuildLink = (id: string) => {
+    navigator.clipboard.writeText(`${window.location.origin}/build/${id}`);
+    setCopiedBuildId(id);
+    setTimeout(() => setCopiedBuildId(null), 2000);
   };
 
   if (authLoading) return null;
@@ -285,6 +331,101 @@ export default function ProfilePage({ onOpenMessages }: Props) {
                 ))}
               </div>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* Мои сборки */}
+      <div className="rounded-2xl p-6" style={{ background: 'hsl(222 18% 9%)', border: '1px solid #c9a84c22' }}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-xs uppercase tracking-widest" style={{ color: '#c9a84c88', fontFamily: 'Manrope, sans-serif' }}>
+            Мои сборки
+          </div>
+          {builds.length > 0 && (
+            <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: '#c9a84c22', color: '#c9a84c', fontFamily: 'Manrope, sans-serif' }}>
+              {builds.length}
+            </span>
+          )}
+        </div>
+
+        {buildsLoading ? (
+          <div className="flex items-center gap-2 py-4" style={{ color: '#555', fontFamily: 'Manrope, sans-serif' }}>
+            <Icon name="Loader" size={14} className="animate-spin" />
+            <span className="text-sm">Загрузка...</span>
+          </div>
+        ) : builds.length === 0 ? (
+          <p className="text-sm" style={{ color: '#555', fontFamily: 'Manrope, sans-serif' }}>
+            Сборок пока нет. Откройте карточку отряда, добавьте трактаты и нажмите «Поделиться».
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {builds.map(build => {
+              const unit = units.find(u => u.id === build.unitId);
+              const buildTreaties = treaties.filter(t => build.treatyIds.includes(t.id));
+              return (
+                <div key={build.id} className="rounded-xl p-4" style={{ background: 'hsl(222 20% 12%)', border: '1px solid hsl(222 14% 20%)' }}>
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {unit?.avatar_url && (
+                        <div className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
+                          <img src={unit.avatar_url} alt={unit.name} className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold truncate" style={{ color: '#eee', fontFamily: 'Manrope, sans-serif' }}>{build.title}</p>
+                        {unit && <p className="text-xs truncate" style={{ color: '#666', fontFamily: 'Manrope, sans-serif' }}>{unit.name}</p>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <button
+                        onClick={() => handleCopyBuildLink(build.id)}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition-all"
+                        style={{ background: '#c9a84c22', border: '1px solid #c9a84c44', color: copiedBuildId === build.id ? '#7eb87e' : '#c9a84c', fontFamily: 'Manrope, sans-serif' }}
+                        title="Скопировать ссылку"
+                      >
+                        <Icon name={copiedBuildId === build.id ? 'Check' : 'Copy'} size={11} />
+                        {copiedBuildId === build.id ? 'Скопировано' : 'Ссылка'}
+                      </button>
+                      <a
+                        href={`/build/${build.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition-all"
+                        style={{ background: '#ffffff08', border: '1px solid #ffffff15', color: '#888', fontFamily: 'Manrope, sans-serif' }}
+                        title="Открыть сборку"
+                      >
+                        <Icon name="ExternalLink" size={11} />
+                      </a>
+                      <button
+                        onClick={() => handleDeleteBuild(build.id)}
+                        disabled={deletingBuildId === build.id}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition-all disabled:opacity-50"
+                        style={{ background: '#e0525215', border: '1px solid #e0525244', color: '#e05252', fontFamily: 'Manrope, sans-serif' }}
+                        title="Удалить"
+                      >
+                        <Icon name={deletingBuildId === build.id ? 'Loader' : 'Trash2'} size={11} className={deletingBuildId === build.id ? 'animate-spin' : ''} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Трактаты */}
+                  {buildTreaties.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {buildTreaties.map(t => (
+                        <span key={t.id} className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: '#ffffff0a', border: '1px solid #ffffff15', color: '#888', fontFamily: 'Manrope, sans-serif' }}>
+                          {t.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-3 mt-2 text-[11px]" style={{ color: '#555', fontFamily: 'Manrope, sans-serif' }}>
+                    <span className="flex items-center gap-1"><Icon name="Eye" size={10} />{build.views}</span>
+                    <span>{new Date(build.createdAt).toLocaleDateString('ru-RU')}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
