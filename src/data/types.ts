@@ -131,4 +131,5 @@ export interface Unit {
   guide_upgrade?: GuideBlock[];
   guide_gameplay?: GuideBlock[];
   formations?: number[]; // массив ID построений
+  subtype?: UnitSubtype | ''; // внутренний подтип, не отображается пользователям
 }

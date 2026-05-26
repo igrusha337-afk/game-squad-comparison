@@ -67,7 +67,7 @@ def parse_jsonb(val):
 
 def row_to_unit(row):
     # id, name, class, role, rarity, description, lore, abilities, avatar_url, stats,
-    # created_at, is_active, traits, stars, guide_upgrade, guide_gameplay, formations
+    # created_at, is_active, traits, stars, guide_upgrade, guide_gameplay, formations, subtype
     return {
         'id': row[0],
         'name': row[1],
@@ -86,10 +86,11 @@ def row_to_unit(row):
         'guide_upgrade': parse_jsonb(row[14]) if len(row) > 14 else [],
         'guide_gameplay': parse_jsonb(row[15]) if len(row) > 15 else [],
         'formations': parse_jsonb(row[16]) if len(row) > 16 else [],
+        'subtype': row[17] or '' if len(row) > 17 else '',
     }
 
 
-SELECT_COLS = "id, name, class, role, rarity, description, lore, abilities, avatar_url, stats, created_at, is_active, traits, stars, guide_upgrade, guide_gameplay, formations"
+SELECT_COLS = "id, name, class, role, rarity, description, lore, abilities, avatar_url, stats, created_at, is_active, traits, stars, guide_upgrade, guide_gameplay, formations, subtype"
 
 
 def normalize_role(role_raw):
@@ -152,6 +153,7 @@ def handler(event: dict, context) -> dict:
         guide_upgrade = body.get('guide_upgrade', [])
         guide_gameplay = body.get('guide_gameplay', [])
         formations = body.get('formations', [])
+        subtype = body.get('subtype', '')
 
         with conn.cursor() as cur:
             cur.execute(f"SELECT id FROM {SCHEMA}.units WHERE id = %s", (unit_id,))
@@ -159,15 +161,15 @@ def handler(event: dict, context) -> dict:
                 unit_id = unit_id + '-' + os.urandom(3).hex()
 
             cur.execute(
-                f"INSERT INTO {SCHEMA}.units (id, name, class, role_old, role, rarity, description, lore, abilities, traits, avatar_url, stats, stars, guide_upgrade, guide_gameplay, formations, created_by) "
-                f"VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                f"INSERT INTO {SCHEMA}.units (id, name, class, role_old, role, rarity, description, lore, abilities, traits, avatar_url, stats, stars, guide_upgrade, guide_gameplay, formations, subtype, created_by) "
+                f"VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
                 f"RETURNING {SELECT_COLS}",
                 (unit_id, name, unit_class, '', json.dumps(role, ensure_ascii=False), rarity, description, lore,
                  json.dumps(abilities, ensure_ascii=False), json.dumps(traits, ensure_ascii=False),
                  avatar_url, json.dumps(stats), stars,
                  json.dumps(guide_upgrade, ensure_ascii=False), json.dumps(guide_gameplay, ensure_ascii=False),
                  json.dumps(formations, ensure_ascii=False),
-                 user['id'])
+                 subtype, user['id'])
             )
             row = cur.fetchone()
             conn.commit()
@@ -199,6 +201,7 @@ def handler(event: dict, context) -> dict:
         guide_upgrade = body.get('guide_upgrade', [])
         guide_gameplay = body.get('guide_gameplay', [])
         formations = body.get('formations', [])
+        subtype = body.get('subtype', '')
 
         with conn.cursor() as cur:
             cur.execute(f"SELECT id FROM {SCHEMA}.units WHERE id = %s", (unit_id,))
@@ -209,14 +212,14 @@ def handler(event: dict, context) -> dict:
             cur.execute(
                 f"UPDATE {SCHEMA}.units SET name=%s, class=%s, role=%s, rarity=%s, description=%s, lore=%s, "
                 f"abilities=%s, traits=%s, avatar_url=%s, stats=%s, stars=%s, "
-                f"guide_upgrade=%s, guide_gameplay=%s, formations=%s, updated_at=now() WHERE id=%s "
+                f"guide_upgrade=%s, guide_gameplay=%s, formations=%s, subtype=%s, updated_at=now() WHERE id=%s "
                 f"RETURNING {SELECT_COLS}",
                 (name, unit_class, json.dumps(role, ensure_ascii=False), rarity, description, lore,
                  json.dumps(abilities, ensure_ascii=False), json.dumps(traits, ensure_ascii=False),
                  avatar_url, json.dumps(stats), stars,
                  json.dumps(guide_upgrade, ensure_ascii=False), json.dumps(guide_gameplay, ensure_ascii=False),
                  json.dumps(formations, ensure_ascii=False),
-                 unit_id)
+                 subtype, unit_id)
             )
             row = cur.fetchone()
             conn.commit()

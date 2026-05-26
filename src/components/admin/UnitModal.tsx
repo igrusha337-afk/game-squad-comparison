@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Rarity, UnitClass, UnitRole, Ability, Trait, Formation } from '@/data/types';
+import { Rarity, UnitClass, UnitRole, UnitSubtype, Ability, Trait, Formation } from '@/data/types';
 import { STAT_GROUPS } from '@/data/statGroups';
 import { UnitRoleDef, TraitDef, AbilityDef } from '@/hooks/useAppData';
 import Icon from '@/components/ui/icon';
@@ -7,7 +7,7 @@ import AvatarUpload from '@/components/AvatarUpload';
 import { StarPicker } from '@/components/StarRating';
 import GuideEditor from '@/components/GuideEditor';
 import { GuideBlock } from '@/data/types';
-import { UNIT_CLASSES, RARITIES, RARITY_LABELS, DEFAULT_UNIT_STATS } from './adminConstants';
+import { UNIT_CLASSES, UNIT_SUBTYPES, RARITIES, RARITY_LABELS, DEFAULT_UNIT_STATS } from './adminConstants';
 
 interface UnitFormData {
   name: string;
@@ -23,6 +23,7 @@ interface UnitFormData {
   abilities: never[];
   stats: typeof DEFAULT_UNIT_STATS;
   formations: number[];
+  subtype: UnitSubtype | '';
 }
 
 function getRawRoles(raw: unknown): UnitRole[] {
@@ -86,6 +87,7 @@ export function UnitModal({ unit, onSave, onClose, availableRoles, availableForm
     abilities: [],
     stats: { ...DEFAULT_UNIT_STATS, ...((unit?.stats as Record<string, number>) || {}) },
     formations: Array.isArray(unit?.formations) ? (unit.formations as number[]) : [],
+    subtype: (unit?.subtype as UnitSubtype | '') || '',
   });
 
   const set = (key: keyof UnitFormData, val: unknown) => setForm(f => ({ ...f, [key]: val }));
@@ -130,7 +132,7 @@ export function UnitModal({ unit, onSave, onClose, availableRoles, availableForm
         rarity: form.rarity, description: form.description, lore: form.lore,
         avatar_url: form.avatar_url, stars: form.stars,
         guide_upgrade: form.guide_upgrade, guide_gameplay: form.guide_gameplay,
-        abilities, traits, stats: form.stats, formations: form.formations,
+        abilities, traits, stats: form.stats, formations: form.formations, subtype: form.subtype,
       });
       onClose();
     } catch (err: unknown) {
@@ -162,7 +164,7 @@ export function UnitModal({ unit, onSave, onClose, availableRoles, availableForm
             </div>
             <div>
               <label className="text-xs text-muted-foreground block mb-1.5">Класс</label>
-              <select value={form.class} onChange={e => set('class', e.target.value)} className={inputCls}>
+              <select value={form.class} onChange={e => { set('class', e.target.value); set('subtype', ''); }} className={inputCls}>
                 {UNIT_CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
@@ -170,6 +172,20 @@ export function UnitModal({ unit, onSave, onClose, availableRoles, availableForm
               <label className="text-xs text-muted-foreground block mb-1.5">Редкость</label>
               <select value={form.rarity} onChange={e => set('rarity', e.target.value)} className={inputCls}>
                 {RARITIES.map(r => <option key={r} value={r}>{RARITY_LABELS[r]}</option>)}
+              </select>
+            </div>
+            <div className="col-span-2">
+              <label className="text-xs text-muted-foreground block mb-1.5">
+                Подтип <span className="opacity-50 font-normal">(служебный, не виден игрокам — используется для фильтрации трактатов)</span>
+              </label>
+              <select value={form.subtype} onChange={e => set('subtype', e.target.value as UnitSubtype | '')} className={inputCls}>
+                <option value="">— не задан —</option>
+                {UNIT_SUBTYPES.filter(st => {
+                  if (form.class === 'Пехота') return st.startsWith('Пехота');
+                  if (form.class === 'Стрелки') return st.startsWith('Стрелковая');
+                  if (form.class === 'Кавалерия') return st.startsWith('Кавалерия');
+                  return false;
+                }).map(st => <option key={st} value={st}>{st}</option>)}
               </select>
             </div>
             <div className="col-span-2">

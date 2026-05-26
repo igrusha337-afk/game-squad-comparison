@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Unit, UnitStats, parseUnitSubtype } from '@/data/types';
+import { Unit, UnitStats, UnitSubtype } from '@/data/types';
 import { Treaty } from '@/data/types';
 import RarityBadge from '@/components/RarityBadge';
 import Icon from '@/components/ui/icon';
@@ -24,7 +24,7 @@ export default function UnitSidebar({
 }: UnitSidebarProps) {
   const [showAvailable, setShowAvailable] = useState(false);
 
-  const unitSubtype = parseUnitSubtype(unit.description || '');
+  const unitSubtype: UnitSubtype | null = (unit.subtype as UnitSubtype) || null;
 
   const isTreatyCompatible = (t: Treaty) => {
     const subtypes = t.compatibleSubtypes;

@@ -1,0 +1,1 @@
+ALTER TABLE units ADD COLUMN IF NOT EXISTS subtype text DEFAULT '';
