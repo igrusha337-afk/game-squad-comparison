@@ -32,10 +32,19 @@ export default function UnitDetailPage({ unitId, appliedTreaties, onBack, onAppl
 
   const myTreatyIds = appliedTreaties[unit.id] || [];
   const myTreaties = treaties.filter(t => myTreatyIds.includes(t.id));
-  const availableTreaties = treaties.filter(
-    t => !myTreatyIds.includes(t.id) &&
-    (t.compatibleClasses.length === 0 || t.compatibleClasses.includes(unit.class as never))
-  );
+
+  const unitSubtype = unit.subtype || '';
+  const availableTreaties = treaties.filter(t => {
+    if (myTreatyIds.includes(t.id)) return false;
+    const subtypes = t.compatibleSubtypes;
+    if (subtypes && subtypes.length > 0) {
+      return unitSubtype ? subtypes.includes(unitSubtype as never) : false;
+    }
+    if (t.compatibleClasses && t.compatibleClasses.length > 0) {
+      return t.compatibleClasses.includes(unit.class as never);
+    }
+    return true;
+  });
 
   const activeAbilities = unit.abilities.filter(ab => {
     const obj = getAbilityObj(ab);

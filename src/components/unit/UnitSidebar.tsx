@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Unit, UnitStats, UnitSubtype } from '@/data/types';
+import { Unit, UnitStats } from '@/data/types';
 import { Treaty } from '@/data/types';
 import RarityBadge from '@/components/RarityBadge';
 import Icon from '@/components/ui/icon';
@@ -24,20 +24,8 @@ export default function UnitSidebar({
 }: UnitSidebarProps) {
   const [showAvailable, setShowAvailable] = useState(false);
 
-  const unitSubtype: UnitSubtype | null = (unit.subtype as UnitSubtype) || null;
-
-  const isTreatyCompatible = (t: Treaty) => {
-    const subtypes = t.compatibleSubtypes;
-    if (subtypes && subtypes.length > 0) {
-      return unitSubtype ? subtypes.includes(unitSubtype) : false;
-    }
-    if (t.compatibleClasses && t.compatibleClasses.length > 0) {
-      return t.compatibleClasses.includes(unit.class);
-    }
-    return true;
-  };
-
-  const filteredAvailable = availableTreaties.filter(isTreatyCompatible);
+  const filteredAvailable = availableTreaties;
+  const unitSubtype = unit.subtype || '';
 
   return (
     <div className="space-y-4">
