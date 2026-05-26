@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Rarity, UnitClass, UnitSubtype } from '@/data/types';
+import { Rarity, UnitClass, UnitSubtype, TreatyCategory } from '@/data/types';
 import Icon from '@/components/ui/icon';
 import AvatarUpload from '@/components/AvatarUpload';
 import { UNIT_CLASSES, UNIT_SUBTYPES, SUBTYPE_CLASS, RARITIES, RARITY_LABELS, DEFAULT_UNIT_STATS, STAT_LABELS } from './adminConstants';
@@ -18,10 +18,11 @@ function initModifiers(treaty?: Record<string, unknown> | null): Record<string, 
   return result;
 }
 
-export function TreatyModal({ treaty, onSave, onClose }: {
+export function TreatyModal({ treaty, onSave, onClose, categories = [] }: {
   treaty?: Record<string, unknown> | null;
   onSave: (data: Record<string, unknown>) => Promise<void>;
   onClose: () => void;
+  categories?: TreatyCategory[];
 }) {
   const editing = !!treaty;
   const [loading, setLoading] = useState(false);
@@ -32,6 +33,7 @@ export function TreatyModal({ treaty, onSave, onClose }: {
   const [classes, setClasses] = useState<UnitClass[]>((treaty?.compatibleClasses as UnitClass[]) || []);
   const [subtypes, setSubtypes] = useState<UnitSubtype[]>((treaty?.compatibleSubtypes as UnitSubtype[]) || []);
   const [avatarUrl, setAvatarUrl] = useState((treaty?.avatar_url as string) || '');
+  const [categoryId, setCategoryId] = useState<number | null>((treaty?.categoryId as number | null) ?? null);
   const [modifiers, setModifiers] = useState<Record<string, ModifierEntry>>(initModifiers(treaty));
   const [newModKey, setNewModKey] = useState('health');
   const [newModVal, setNewModVal] = useState('');
@@ -70,7 +72,7 @@ export function TreatyModal({ treaty, onSave, onClose }: {
           else statModifiers[k] = n;
         }
       }
-      await onSave({ name: name.trim(), description, rarity, compatibleClasses: classes, compatibleSubtypes: subtypes, statModifiers, statModifiersEx, avatar_url: avatarUrl });
+      await onSave({ name: name.trim(), description, rarity, compatibleClasses: classes, compatibleSubtypes: subtypes, statModifiers, statModifiersEx, avatar_url: avatarUrl, categoryId });
       onClose();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Ошибка сохранения');
@@ -105,6 +107,13 @@ export function TreatyModal({ treaty, onSave, onClose }: {
             <label className="text-xs text-muted-foreground block mb-1.5">Редкость</label>
             <select value={rarity} onChange={e => setRarity(e.target.value as Rarity)} className={inputCls}>
               {RARITIES.map(r => <option key={r} value={r}>{RARITY_LABELS[r]}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground block mb-1.5">Категория</label>
+            <select value={categoryId ?? ''} onChange={e => setCategoryId(e.target.value ? Number(e.target.value) : null)} className={inputCls}>
+              <option value="">— без категории —</option>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div>

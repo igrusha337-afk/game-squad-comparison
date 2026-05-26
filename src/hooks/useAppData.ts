@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { unitsApi, treatiesApi, rolesApi, formationsApi, traitsApi, abilitiesApi } from '@/lib/api';
-import { Unit, Treaty, UnitStats, Ability, Trait, Formation, StatModifierEntry, TraitColor } from '@/data/types';
+import { Unit, Treaty, TreatyCategory, UnitStats, Ability, Trait, Formation, StatModifierEntry, TraitColor } from '@/data/types';
 
 export interface UnitRoleDef {
   id: number;
@@ -85,13 +85,25 @@ function apiToTreaty(t: Record<string, unknown>): Treaty {
     statModifiers: (t.statModifiers as Partial<UnitStats>) || {},
     statModifiersEx: (t.statModifiersEx as Partial<Record<keyof UnitStats, StatModifierEntry>>) || undefined,
     avatar_url: (t.avatar_url as string) || '',
+    categoryId: (t.categoryId as number | null) ?? null,
+  };
+}
+
+function apiToCategory(c: Record<string, unknown>): TreatyCategory {
+  return {
+    id: c.id as number,
+    name: c.name as string,
+    description: (c.description as string) || '',
+    sortOrder: (c.sortOrder as number) || 0,
   };
 }
 
 let cachedUnits: Unit[] | null = null;
 let cachedTreaties: Treaty[] | null = null;
+ 
+let cachedTreatyCategories: TreatyCategory[] | null = null;
 let unitsPromise: Promise<Unit[]> | null = null;
-let treatiesPromise: Promise<Treaty[]> | null = null;
+let treatiesPromise: Promise<{ treaties: Treaty[]; categories: TreatyCategory[] }> | null = null;
 
 export function useUnits() {
   const [units, setUnits] = useState<Unit[]>(cachedUnits || []);
@@ -131,21 +143,30 @@ export function useUnits() {
 
 export function useTreaties() {
   const [treaties, setTreaties] = useState<Treaty[]>(cachedTreaties || []);
+  const [categories, setCategories] = useState<TreatyCategory[]>(cachedTreatyCategories || []);
   const [loading, setLoading] = useState(!cachedTreaties);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
-    if (cachedTreaties) { setTreaties(cachedTreaties); setLoading(false); return; }
+    if (cachedTreaties && cachedTreatyCategories) {
+      setTreaties(cachedTreaties);
+      setCategories(cachedTreatyCategories);
+      setLoading(false);
+      return;
+    }
     if (!treatiesPromise) {
       treatiesPromise = treatiesApi.list().then(data => {
-        const mapped = (data.treaties as Record<string, unknown>[]).map(apiToTreaty);
-        cachedTreaties = mapped;
-        return mapped;
+        const mappedTreaties = (data.treaties as Record<string, unknown>[]).map(apiToTreaty);
+        const mappedCategories = ((data.categories || []) as Record<string, unknown>[]).map(apiToCategory);
+        cachedTreaties = mappedTreaties;
+        cachedTreatyCategories = mappedCategories;
+        return { treaties: mappedTreaties, categories: mappedCategories };
       });
     }
     try {
       const result = await treatiesPromise;
-      setTreaties(result);
+      setTreaties(result.treaties);
+      setCategories(result.categories);
     } catch {
       setError('Не удалось загрузить трактаты');
     } finally {
@@ -157,12 +178,13 @@ export function useTreaties() {
 
   const invalidate = () => {
     cachedTreaties = null;
+    cachedTreatyCategories = null;
     treatiesPromise = null;
     setLoading(true);
     load();
   };
 
-  return { treaties, loading, error, invalidate };
+  return { treaties, categories, loading, error, invalidate };
 }
 
 let cachedRoles: UnitRoleDef[] | null = null;

@@ -37,14 +37,25 @@ interface TreatiesPageProps {
 
 export default function TreatiesPage({ appliedTreaties, onApply, onRemove }: TreatiesPageProps) {
   const { units: UNITS, loading: unitsLoading } = useUnits();
-  const { treaties: TREATIES, loading: treatiesLoading } = useTreaties();
+  const { treaties: TREATIES, categories: CATEGORIES, loading: treatiesLoading } = useTreaties();
   const [selectedUnit, setSelectedUnit] = useState<string>('');
+  const [filterCategoryId, setFilterCategoryId] = useState<number | null>(null);
 
   const unit = UNITS.find(u => u.id === selectedUnit);
   const unitTreatyIds = selectedUnit ? (appliedTreaties[selectedUnit] || []) : [];
+  const unitSubtype = unit?.subtype || '';
 
   const compatibleTreaties = unit
-    ? TREATIES.filter(t => t.compatibleClasses.includes(unit.class))
+    ? TREATIES.filter(t => {
+        const subtypes = t.compatibleSubtypes;
+        if (subtypes && subtypes.length > 0) {
+          if (!unitSubtype || !subtypes.includes(unitSubtype as never)) return false;
+        } else if (t.compatibleClasses.length > 0 && !t.compatibleClasses.includes(unit.class)) {
+          return false;
+        }
+        if (filterCategoryId !== null && t.categoryId !== filterCategoryId) return false;
+        return true;
+      })
     : [];
 
   const getStatBonuses = (unitId: string) => {
@@ -153,9 +164,28 @@ export default function TreatiesPage({ appliedTreaties, onApply, onRemove }: Tre
                 )}
               </div>
 
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-widest mb-3">
-                Доступные трактаты ({compatibleTreaties.length})
-              </h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">
+                  Доступные трактаты ({compatibleTreaties.length})
+                </h3>
+              </div>
+
+              {CATEGORIES.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  <button
+                    onClick={() => setFilterCategoryId(null)}
+                    className={`px-3 py-1 text-xs rounded-sm border transition-colors ${filterCategoryId === null ? 'bg-primary/10 border-primary text-primary' : 'border-border text-muted-foreground hover:border-foreground/40'}`}>
+                    Все
+                  </button>
+                  {CATEGORIES.map(c => (
+                    <button key={c.id}
+                      onClick={() => setFilterCategoryId(filterCategoryId === c.id ? null : c.id)}
+                      className={`px-3 py-1 text-xs rounded-sm border transition-colors ${filterCategoryId === c.id ? 'bg-primary/10 border-primary text-primary' : 'border-border text-muted-foreground hover:border-foreground/40'}`}>
+                      {c.name}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <div className="grid gap-3">
                 {compatibleTreaties.map(t => {

@@ -230,4 +230,10 @@ export const treatiesApi = {
     request(URLS.treatiesApi, { method: 'POST', body: JSON.stringify({ action: 'update', id, ...data }) }),
   delete: (id: string) =>
     request(URLS.treatiesApi, { method: 'POST', body: JSON.stringify({ action: 'delete', id }) }),
+  createCategory: (data: { name: string; description: string; sortOrder: number }) =>
+    request(URLS.treatiesApi, { method: 'POST', body: JSON.stringify({ action: 'create_category', ...data }) }),
+  updateCategory: (id: number, data: { name: string; description: string; sortOrder: number }) =>
+    request(URLS.treatiesApi, { method: 'POST', body: JSON.stringify({ action: 'update_category', id, ...data }) }),
+  deleteCategory: (id: number) =>
+    request(URLS.treatiesApi, { method: 'POST', body: JSON.stringify({ action: 'delete_category', id }) }),
 };

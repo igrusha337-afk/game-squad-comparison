@@ -82,6 +82,13 @@ export interface StatModifierEntry {
   type: StatModifierType;
 }
 
+export interface TreatyCategory {
+  id: number;
+  name: string;
+  description: string;
+  sortOrder: number;
+}
+
 export interface Treaty {
   id: string;
   name: string;
@@ -92,6 +99,7 @@ export interface Treaty {
   compatibleSubtypes?: UnitSubtype[];
   rarity: Rarity;
   avatar_url?: string;
+  categoryId?: number | null;
 }
 
 export interface Ability {

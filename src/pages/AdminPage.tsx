@@ -8,12 +8,25 @@ import { Toast, ConfirmModal, UnitModal, TreatyModal } from '@/components/admin/
 import { AdminTabUnits, AdminTabTreaties } from '@/components/admin/AdminTabUnitsAndTreaties';
 import { AdminTabRoles, AdminTabFormations, AdminTabTraits, AdminTabAbilities } from '@/components/admin/AdminTabDictionaries';
 import { AdminTabStats, AdminTabModeration, SiteStats } from '@/components/admin/AdminTabStatsAndModeration';
+import { AdminTabTreatyCategories } from '@/components/admin/AdminTabTreatyCategories';
 
 import { useAdminUnits } from './admin/useAdminUnits';
 import { useAdminDictionaries } from './admin/useAdminDictionaries';
 import { useAdminModeration } from './admin/useAdminModeration';
 
-type AdminTab = 'stats' | 'units' | 'treaties' | 'roles' | 'formations' | 'traits' | 'abilities' | 'moderation';
+type AdminTab = 'stats' | 'units' | 'treaties' | 'treaty-categories' | 'roles' | 'formations' | 'traits' | 'abilities' | 'moderation';
+
+const TAB_LABELS: Record<AdminTab, string> = {
+  stats: 'Статистика',
+  units: 'Отряды',
+  treaties: 'Трактаты',
+  'treaty-categories': 'Категории',
+  roles: 'Роли',
+  formations: 'Построения',
+  traits: 'Особенности',
+  abilities: 'Умения',
+  moderation: 'Публикации',
+};
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -43,7 +56,7 @@ export default function AdminPage() {
       statsApi.getStats().then(data => setSiteStats(data)).catch(() => {}).finally(() => setStatsLoading(false));
     }
     if (tab === 'moderation') mod$.loadPending();
-  }, [tab]);
+  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!user?.is_admin) {
     return (
@@ -55,6 +68,8 @@ export default function AdminPage() {
       </div>
     );
   }
+
+  const allTabs: AdminTab[] = ['stats', 'units', 'treaties', 'treaty-categories', 'roles', 'formations', 'traits', 'abilities', 'moderation'];
 
   return (
     <div className="max-w-5xl">
@@ -74,12 +89,12 @@ export default function AdminPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b border-border flex-wrap">
-        {(['stats', 'units', 'treaties', 'roles', 'formations', 'traits', 'abilities', 'moderation'] as AdminTab[]).map(t => (
+        {allTabs.map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-4 py-2.5 text-sm transition-colors border-b-2 -mb-px flex items-center gap-1.5 ${tab === t ? 'border-primary text-primary font-medium' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
-            {t === 'stats' ? 'Статистика' : t === 'units' ? 'Отряды' : t === 'treaties' ? 'Трактаты' : t === 'roles' ? 'Роли' : t === 'formations' ? 'Построения' : t === 'traits' ? 'Особенности' : t === 'abilities' ? 'Умения' : (
+            {t === 'moderation' ? (
               <span className="flex items-center gap-1.5">
-                Публикации
+                {TAB_LABELS[t]}
                 {(mod$.pendingTopics.length + mod$.pendingGuides.length) > 0 && (
                   <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none"
                     style={{ background: 'hsl(355 72% 50%)', color: 'white' }}>
@@ -87,7 +102,7 @@ export default function AdminPage() {
                   </span>
                 )}
               </span>
-            )}
+            ) : TAB_LABELS[t]}
           </button>
         ))}
       </div>
@@ -111,6 +126,16 @@ export default function AdminPage() {
           onAdd={() => units$.setTreatyModal({ open: true, treaty: null })}
           onEdit={treaty => units$.setTreatyModal({ open: true, treaty })}
           onDelete={treaty => units$.setConfirmDelete({ id: treaty.id as string, name: treaty.name as string, kind: 'treaty' })}
+        />
+      )}
+
+      {tab === 'treaty-categories' && (
+        <AdminTabTreatyCategories
+          categories={units$.treatyCategories}
+          loading={units$.loadingData}
+          onCreate={units$.handleCreateCategory}
+          onUpdate={units$.handleUpdateCategory}
+          onDelete={units$.handleDeleteCategory}
         />
       )}
 
@@ -191,7 +216,12 @@ export default function AdminPage() {
           availableRoles={roles} availableFormations={formations} availableTraits={traits} availableAbilities={abilities} />
       )}
       {units$.treatyModal.open && (
-        <TreatyModal treaty={units$.treatyModal.treaty} onSave={units$.handleSaveTreaty} onClose={() => units$.setTreatyModal({ open: false })} />
+        <TreatyModal
+          treaty={units$.treatyModal.treaty}
+          onSave={units$.handleSaveTreaty}
+          onClose={() => units$.setTreatyModal({ open: false })}
+          categories={units$.treatyCategories}
+        />
       )}
       {units$.confirmDelete && (
         <ConfirmModal
