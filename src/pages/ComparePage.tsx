@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { useUnits, useTreaties } from '@/hooks/useAppData';
-import { STAT_GROUPS, ALL_STATS } from '@/data/statGroups';
+import { useUnits, useTreaties, useSpecialStats } from '@/hooks/useAppData';
+import { STAT_GROUPS } from '@/data/statGroups';
 import { Unit, UnitStats, Ability } from '@/data/types';
 import RarityBadge from '@/components/RarityBadge';
 import StarRating from '@/components/StarRating';
 import Icon from '@/components/ui/icon';
+import { resolveStatLabel, formatModValue } from '@/lib/statLabel';
 
 interface ComparePageProps {
   appliedTreaties: Record<string, string[]>;
@@ -26,6 +27,7 @@ function getAbilityBonus(unit: Unit, key: keyof UnitStats): number {
 export default function ComparePage({ appliedTreaties, onApply, onRemove }: ComparePageProps) {
   const { units: UNITS, loading: unitsLoading } = useUnits();
   const { treaties: TREATIES, categories: CATEGORIES } = useTreaties();
+  const { specialStats } = useSpecialStats();
   const [selected, setSelected] = useState<string[]>([]);
   const [picker, setPicker] = useState(false);
   const [treatyPanelUnit, setTreatyPanelUnit] = useState<string | null>(null);
@@ -419,34 +421,26 @@ export default function ComparePage({ appliedTreaties, onApply, onRemove }: Comp
                             {applied ? 'Снять' : 'Взять'}
                           </button>
                         </div>
+                        {t.description && (
+                          <p className="text-[11px] text-muted-foreground leading-relaxed mb-1.5">{t.description}</p>
+                        )}
                         <div className="flex flex-wrap gap-1">
                           {Object.entries(t.statModifiers).map(([stat, val]) => {
-                            const statDef = ALL_STATS.find(s => s.key === stat);
-                            const shortLabel = statDef
-                              ? statDef.label.length > 15 ? statDef.label.slice(0, 14) + '…' : statDef.label
-                              : stat;
+                            const label = resolveStatLabel(stat, specialStats);
+                            if (!label) return null;
+                            const v = val as number;
                             return (
-                              <span
-                                key={stat}
-                                className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${(val || 0) > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}
-                              >
-                                {shortLabel}: {(val || 0) > 0 ? '+' : ''}{val}
+                              <span key={stat} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${v > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                                {label}: {formatModValue(v, false)}
                               </span>
                             );
                           })}
                           {t.statModifiersEx && Object.entries(t.statModifiersEx).map(([stat, ex]) => {
-                            const statDef = ALL_STATS.find(s => s.key === stat);
-                            const shortLabel = statDef
-                              ? statDef.label.length > 15 ? statDef.label.slice(0, 14) + '…' : statDef.label
-                              : stat;
-                            const val = ex.value;
-                            const display = ex.type === 'percent' ? `${val > 0 ? '+' : ''}${val}%` : `${val > 0 ? '+' : ''}${val}`;
+                            const label = resolveStatLabel(stat, specialStats);
+                            if (!label) return null;
                             return (
-                              <span
-                                key={`ex-${stat}`}
-                                className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${val > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}
-                              >
-                                {shortLabel}: {display}
+                              <span key={`ex-${stat}`} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${ex.value > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                                {label}: {formatModValue(ex.value, ex.type === 'percent')}
                               </span>
                             );
                           })}
