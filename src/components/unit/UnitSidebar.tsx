@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Unit, UnitStats, TreatyCategory } from '@/data/types';
+import { Unit, TreatyCategory } from '@/data/types';
 import { Treaty } from '@/data/types';
 import RarityBadge from '@/components/RarityBadge';
 import Icon from '@/components/ui/icon';
-import { STAT_LABEL_MAP, getAbilityObj } from './UnitTags';
+import { getAbilityObj } from './UnitTags';
 import SaveBuildModal from './SaveBuildModal';
 import { useAuth } from '@/context/AuthContext';
+import { useSpecialStats } from '@/hooks/useAppData';
+import { resolveStatLabel, formatModValue } from '@/lib/statLabel';
 
 const TREATY_LIMIT = 5;
 
@@ -29,6 +31,7 @@ export default function UnitSidebar({
   categories = [],
 }: UnitSidebarProps) {
   const { user } = useAuth();
+  const { specialStats } = useSpecialStats();
   const [showAvailable, setShowAvailable] = useState(false);
   const [filterCategoryId, setFilterCategoryId] = useState<number | null>(null);
   const [showSaveBuild, setShowSaveBuild] = useState(false);
@@ -108,7 +111,7 @@ export default function UnitSidebar({
           <div className="space-y-2">
             {myTreaties.map(t => (
               <div key={t.id} className={`border border-rarity-${t.rarity} rounded-sm p-3`}>
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-2 mb-1.5">
                   {t.avatar_url && (
                     <div className="w-7 h-7 rounded-sm overflow-hidden flex-shrink-0 bg-muted">
                       <img src={t.avatar_url} alt={t.name} className="w-full h-full object-cover" />
@@ -132,17 +135,29 @@ export default function UnitSidebar({
                     </button>
                   )}
                 </div>
+                {t.description && (
+                  <p className="text-[11px] text-muted-foreground leading-relaxed mb-2">{t.description}</p>
+                )}
                 <div className="flex flex-wrap gap-1">
-                  {Object.entries(t.statModifiers || {}).map(([stat, val]) => (
-                    <span key={stat} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${(val || 0) > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
-                      {STAT_LABEL_MAP[stat as keyof UnitStats] ?? stat}: {(val || 0) > 0 ? '+' : ''}{val}
-                    </span>
-                  ))}
-                  {Object.entries(t.statModifiersEx || {}).map(([stat, entry]) => (
-                    <span key={`ex-${stat}`} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${entry.value > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
-                      {STAT_LABEL_MAP[stat as keyof UnitStats] ?? stat}: {entry.value > 0 ? '+' : ''}{entry.value}%
-                    </span>
-                  ))}
+                  {Object.entries(t.statModifiers || {}).map(([stat, val]) => {
+                    const label = resolveStatLabel(stat, specialStats);
+                    if (!label) return null;
+                    const v = val as number;
+                    return (
+                      <span key={stat} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${v > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                        {label}: {formatModValue(v, false)}
+                      </span>
+                    );
+                  })}
+                  {Object.entries(t.statModifiersEx || {}).map(([stat, entry]) => {
+                    const label = resolveStatLabel(stat, specialStats);
+                    if (!label) return null;
+                    return (
+                      <span key={`ex-${stat}`} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${entry.value > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                        {label}: {formatModValue(entry.value, true)}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -204,17 +219,29 @@ export default function UnitSidebar({
                         </button>
                       )}
                     </div>
+                    {t.description && (
+                      <p className="text-[11px] text-muted-foreground leading-relaxed mb-2">{t.description}</p>
+                    )}
                     <div className="flex flex-wrap gap-1">
-                      {Object.entries(t.statModifiers || {}).map(([stat, val]) => (
-                        <span key={stat} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${(val || 0) > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
-                          {STAT_LABEL_MAP[stat as keyof UnitStats] ?? stat}: {(val || 0) > 0 ? '+' : ''}{val}
-                        </span>
-                      ))}
-                      {Object.entries(t.statModifiersEx || {}).map(([stat, entry]) => (
-                        <span key={`ex-${stat}`} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${entry.value > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
-                          {STAT_LABEL_MAP[stat as keyof UnitStats] ?? stat}: {entry.value > 0 ? '+' : ''}{entry.value}%
-                        </span>
-                      ))}
+                      {Object.entries(t.statModifiers || {}).map(([stat, val]) => {
+                        const label = resolveStatLabel(stat, specialStats);
+                        if (!label) return null;
+                        const v = val as number;
+                        return (
+                          <span key={stat} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${v > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                            {label}: {formatModValue(v, false)}
+                          </span>
+                        );
+                      })}
+                      {Object.entries(t.statModifiersEx || {}).map(([stat, entry]) => {
+                        const label = resolveStatLabel(stat, specialStats);
+                        if (!label) return null;
+                        return (
+                          <span key={`ex-${stat}`} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${entry.value > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                            {label}: {formatModValue(entry.value, true)}
+                          </span>
+                        );
+                      })}
                     </div>
                   </div>
                 ))}

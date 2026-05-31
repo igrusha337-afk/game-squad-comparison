@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { useUnits, useTreaties } from '@/hooks/useAppData';
-import { ALL_STATS } from '@/data/statGroups';
+import { useUnits, useTreaties, useSpecialStats } from '@/hooks/useAppData';
 import { Treaty, Unit, UnitStats } from '@/data/types';
 import RarityBadge from '@/components/RarityBadge';
 import Icon from '@/components/ui/icon';
+import { resolveStatLabel, formatModValue } from '@/lib/statLabel';
 
 function calcModifierValue(treaty: Treaty, key: string, baseStats?: UnitStats): number {
   const ex = treaty.statModifiersEx?.[key as keyof UnitStats];
@@ -16,18 +16,7 @@ function calcModifierValue(treaty: Treaty, key: string, baseStats?: UnitStats): 
   return (treaty.statModifiers[key as keyof UnitStats] as number) || 0;
 }
 
-function formatModifierLabel(treaty: Treaty, key: string): string {
-  const ex = treaty.statModifiersEx?.[key as keyof UnitStats];
-  if (ex?.type === 'percent') return `${ex.value > 0 ? '+' : ''}${ex.value}%`;
-  const val = (treaty.statModifiers[key as keyof UnitStats] as number) || 0;
-  return `${val > 0 ? '+' : ''}${val}`;
-}
 
-const getStatLabel = (key: string) => {
-  const found = ALL_STATS.find(s => s.key === key);
-  if (!found) return key;
-  return found.label.length > 18 ? found.label.slice(0, 17) + '…' : found.label;
-};
 
 interface TreatiesPageProps {
   appliedTreaties: Record<string, string[]>;
@@ -38,6 +27,7 @@ interface TreatiesPageProps {
 export default function TreatiesPage({ appliedTreaties, onApply, onRemove }: TreatiesPageProps) {
   const { units: UNITS, loading: unitsLoading } = useUnits();
   const { treaties: TREATIES, categories: CATEGORIES, loading: treatiesLoading } = useTreaties();
+  const { specialStats } = useSpecialStats();
   const [selectedUnit, setSelectedUnit] = useState<string>('');
   const [filterCategoryId, setFilterCategoryId] = useState<number | null>(null);
 
@@ -150,14 +140,18 @@ export default function TreatiesPage({ appliedTreaties, onApply, onRemove }: Tre
                             totals[k] = (totals[k] || 0) + calcModifierValue(t, k, unit?.stats);
                           });
                         });
-                        return Object.entries(totals).map(([stat, val]) => (
-                          <span
-                            key={stat}
-                            className={`font-mono-data text-[10px] px-2 py-1 rounded-sm ${val > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}
-                          >
-                            {getStatLabel(stat)}: {val > 0 ? '+' : ''}{val}
-                          </span>
-                        ));
+                        return Object.entries(totals).map(([stat, val]) => {
+                          const label = resolveStatLabel(stat, specialStats);
+                          if (!label) return null;
+                          return (
+                            <span
+                              key={stat}
+                              className={`font-mono-data text-[10px] px-2 py-1 rounded-sm ${val > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}
+                            >
+                              {label}: {formatModValue(val, false)}
+                            </span>
+                          );
+                        });
                       })()}
                     </div>
                   </div>
@@ -213,24 +207,25 @@ export default function TreatiesPage({ appliedTreaties, onApply, onRemove }: Tre
                           </div>
                           <p className="text-xs text-muted-foreground mb-2 leading-relaxed">{t.description}</p>
                           <div className="flex flex-wrap gap-1">
-                            {(() => {
-                              const allKeys = new Set([
-                                ...Object.keys(t.statModifiers),
-                                ...Object.keys(t.statModifiersEx || {}),
-                              ]);
-                              return Array.from(allKeys).map(stat => {
-                                const label = formatModifierLabel(t, stat);
-                                const isPositive = label.startsWith('+');
-                                return (
-                                  <span
-                                    key={stat}
-                                    className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${isPositive ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}
-                                  >
-                                    {getStatLabel(stat)}: {label}
-                                  </span>
-                                );
-                              });
-                            })()}
+                            {Object.entries(t.statModifiers || {}).map(([stat, val]) => {
+                              const label = resolveStatLabel(stat, specialStats);
+                              if (!label) return null;
+                              const v = val as number;
+                              return (
+                                <span key={stat} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${v > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                                  {label}: {formatModValue(v, false)}
+                                </span>
+                              );
+                            })}
+                            {Object.entries(t.statModifiersEx || {}).map(([stat, entry]) => {
+                              const label = resolveStatLabel(stat, specialStats);
+                              if (!label) return null;
+                              return (
+                                <span key={`ex-${stat}`} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${entry.value > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                                  {label}: {formatModValue(entry.value, true)}
+                                </span>
+                              );
+                            })}
                           </div>
                         </div>
                         <button

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { buildsApi } from '@/lib/api';
-import { useUnits, useTreaties } from '@/hooks/useAppData';
+import { useUnits, useTreaties, useSpecialStats } from '@/hooks/useAppData';
 import { Treaty, UnitStats } from '@/data/types';
-import { ALL_STATS } from '@/data/statGroups';
 import RarityBadge from '@/components/RarityBadge';
+import { resolveStatLabel, formatModValue } from '@/lib/statLabel';
 
 import Icon from '@/components/ui/icon';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
@@ -23,10 +23,7 @@ interface Build {
   createdAt: string;
 }
 
-const getStatLabel = (key: string) => {
-  const found = ALL_STATS.find(s => s.key === key);
-  return found ? found.label : key;
-};
+
 
 
 
@@ -34,6 +31,7 @@ export default function BuildPage() {
   const { buildId } = useParams<{ buildId: string }>();
   const { units } = useUnits();
   const { treaties: ALL_TREATIES } = useTreaties();
+  const { specialStats } = useSpecialStats();
   const [build, setBuild] = useState<Build | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -149,16 +147,25 @@ export default function BuildPage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1">
-                  {Object.entries(t.statModifiers || {}).map(([stat, val]) => (
-                    <span key={stat} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${(val || 0) > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
-                      {getStatLabel(stat)}: {(val || 0) > 0 ? '+' : ''}{val}
-                    </span>
-                  ))}
-                  {Object.entries(t.statModifiersEx || {}).map(([stat, entry]) => (
-                    <span key={`ex-${stat}`} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${entry.value > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
-                      {getStatLabel(stat)}: {entry.value > 0 ? '+' : ''}{entry.value}%
-                    </span>
-                  ))}
+                  {Object.entries(t.statModifiers || {}).map(([stat, val]) => {
+                    const label = resolveStatLabel(stat, specialStats);
+                    if (!label) return null;
+                    const v = val as number;
+                    return (
+                      <span key={stat} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${v > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                        {label}: {formatModValue(v, false)}
+                      </span>
+                    );
+                  })}
+                  {Object.entries(t.statModifiersEx || {}).map(([stat, entry]) => {
+                    const label = resolveStatLabel(stat, specialStats);
+                    if (!label) return null;
+                    return (
+                      <span key={`ex-${stat}`} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${entry.value > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                        {label}: {formatModValue(entry.value, true)}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
             ))}
