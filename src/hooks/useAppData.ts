@@ -1,6 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
-import { unitsApi, treatiesApi, rolesApi, formationsApi, traitsApi, abilitiesApi } from '@/lib/api';
+import { unitsApi, treatiesApi, rolesApi, formationsApi, traitsApi, abilitiesApi, specialStatsApi } from '@/lib/api';
 import { Unit, Treaty, TreatyCategory, UnitStats, Ability, Trait, Formation, StatModifierEntry, TraitColor } from '@/data/types';
+
+export interface SpecialStatDef {
+  id: number;
+  key: string;
+  label: string;
+  maxValue: number;
+  sortOrder: number;
+}
 
 export interface UnitRoleDef {
   id: number;
@@ -333,4 +341,41 @@ export function useAbilities() {
   };
 
   return { abilities, loading, invalidate };
+}
+
+let cachedSpecialStats: SpecialStatDef[] | null = null;
+let specialStatsPromise: Promise<SpecialStatDef[]> | null = null;
+
+export function useSpecialStats() {
+  const [specialStats, setSpecialStats] = useState<SpecialStatDef[]>(cachedSpecialStats || []);
+  const [loading, setLoading] = useState(!cachedSpecialStats);
+
+  const load = useCallback(async () => {
+    if (cachedSpecialStats) { setSpecialStats(cachedSpecialStats); setLoading(false); return; }
+    if (!specialStatsPromise) {
+      specialStatsPromise = specialStatsApi.list().then((data: SpecialStatDef[]) => {
+        cachedSpecialStats = data;
+        return data;
+      });
+    }
+    try {
+      const result = await specialStatsPromise;
+      setSpecialStats(result);
+    } catch {
+      setSpecialStats([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const invalidate = () => {
+    cachedSpecialStats = null;
+    specialStatsPromise = null;
+    setLoading(true);
+    load();
+  };
+
+  return { specialStats, loading, invalidate };
 }

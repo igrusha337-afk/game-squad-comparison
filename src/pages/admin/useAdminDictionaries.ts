@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { rolesApi, formationsApi, traitsApi, abilitiesApi } from '@/lib/api';
-import { UnitRoleDef, TraitDef, AbilityDef } from '@/hooks/useAppData';
-import { AbilityFormState } from '@/components/admin/AdminTabDictionaries';
+import { rolesApi, formationsApi, traitsApi, abilitiesApi, specialStatsApi } from '@/lib/api';
+import { UnitRoleDef, TraitDef, AbilityDef, SpecialStatDef } from '@/hooks/useAppData';
+import { AbilityFormState, SpecialStatForm } from '@/components/admin/AdminTabDictionaries';
 import { TraitColor, Formation } from '@/data/types';
 
 export function useAdminDictionaries(
@@ -9,6 +9,7 @@ export function useAdminDictionaries(
   invalidateFormations: () => void,
   invalidateTraits: () => void,
   invalidateAbilities: () => void,
+  invalidateSpecialStats: () => void,
   showToast: (msg: string, type?: 'success' | 'error') => void
 ) {
   // Роли
@@ -30,6 +31,12 @@ export function useAdminDictionaries(
   const [traitForm, setTraitForm] = useState({ name: '', description: '', adminComment: '', color: 'gray' as TraitColor });
   const [traitEditing, setTraitEditing] = useState<TraitDef | null>(null);
   const [traitLoading, setTraitLoading] = useState(false);
+
+  // Особые статы
+  const emptySpecialStatForm: SpecialStatForm = { key: '', label: '', maxValue: '1000', sortOrder: '0' };
+  const [specialStatForm, setSpecialStatForm] = useState<SpecialStatForm>(emptySpecialStatForm);
+  const [specialStatEditing, setSpecialStatEditing] = useState<SpecialStatDef | null>(null);
+  const [specialStatLoading, setSpecialStatLoading] = useState(false);
 
   // ── Роли ──
   const handleSaveRole = async () => {
@@ -212,6 +219,52 @@ export function useAdminDictionaries(
     setAbilityForm(f => { const m = { ...f.modifiers }; delete m[key]; return { ...f, modifiers: m }; });
   };
 
+  const handleSaveSpecialStat = async () => {
+    if (!specialStatForm.key.trim() || !specialStatForm.label.trim()) return;
+    setSpecialStatLoading(true);
+    try {
+      if (specialStatEditing) {
+        await specialStatsApi.update(specialStatEditing.id, {
+          label: specialStatForm.label.trim(),
+          maxValue: parseInt(specialStatForm.maxValue) || 1000,
+          sortOrder: parseInt(specialStatForm.sortOrder) || 0,
+        });
+        showToast('Характеристика обновлена');
+      } else {
+        await specialStatsApi.create({
+          key: specialStatForm.key.trim(),
+          label: specialStatForm.label.trim(),
+          maxValue: parseInt(specialStatForm.maxValue) || 1000,
+          sortOrder: parseInt(specialStatForm.sortOrder) || 0,
+        });
+        showToast('Характеристика добавлена');
+      }
+      invalidateSpecialStats();
+      setSpecialStatEditing(null);
+      setSpecialStatForm(emptySpecialStatForm);
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : 'Ошибка сохранения', 'error');
+    } finally {
+      setSpecialStatLoading(false);
+    }
+  };
+
+  const handleDeleteSpecialStat = async (s: SpecialStatDef) => {
+    if (!confirm(`Удалить характеристику «${s.label}»?`)) return;
+    try {
+      await specialStatsApi.delete(s.id);
+      invalidateSpecialStats();
+      showToast('Характеристика удалена');
+    } catch {
+      showToast('Ошибка удаления', 'error');
+    }
+  };
+
+  const startEditSpecialStat = (s: SpecialStatDef) => {
+    setSpecialStatEditing(s);
+    setSpecialStatForm({ key: s.key, label: s.label, maxValue: String(s.maxValue), sortOrder: String(s.sortOrder) });
+  };
+
   return {
     roleForm, setRoleForm, roleEditing, roleLoading,
     handleSaveRole, handleDeleteRole, startEditRole,
@@ -229,5 +282,9 @@ export function useAdminDictionaries(
     handleSaveAbility, handleDeleteAbility, startEditAbility,
     cancelEditAbility: () => { setAbilityEditing(null); setAbilityForm({ name: '', description: '', adminComment: '', modifiers: {}, newModKey: 'health', newModVal: '', newModType: 'flat' }); },
     addAbilityFormMod, removeAbilityFormMod,
+
+    specialStatForm, setSpecialStatForm, specialStatEditing, specialStatLoading,
+    handleSaveSpecialStat, handleDeleteSpecialStat, startEditSpecialStat,
+    cancelEditSpecialStat: () => { setSpecialStatEditing(null); setSpecialStatForm(emptySpecialStatForm); },
   };
 }

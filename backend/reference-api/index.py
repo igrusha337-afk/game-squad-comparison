@@ -77,6 +77,10 @@ def row_to_formation(r):
     return {'id': r[0], 'name': r[1], 'description': r[2], 'avatar_url': r[3]}
 
 
+def row_to_special_stat(r):
+    return {'id': r[0], 'key': r[1], 'label': r[2], 'maxValue': r[3], 'sortOrder': r[4]}
+
+
 def handle_roles(method, body, is_admin):
     if method == 'GET':
         conn = get_conn()
@@ -380,16 +384,93 @@ def handle_formations(method, body, is_admin):
     return resp({'error': 'Неизвестный action'}, 400)
 
 
+def handle_special_stats(method, body, is_admin):
+    if method == 'GET':
+        conn = get_conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(f"SELECT id, key, label, max_value, sort_order FROM {SCHEMA}.special_stats ORDER BY sort_order, label")
+                rows = cur.fetchall()
+        finally:
+            conn.close()
+        return resp([row_to_special_stat(r) for r in rows])
+
+    action = body.get('action', '')
+    key = (body.get('key') or '').strip()
+    label = (body.get('label') or '').strip()
+    max_value = int(body.get('maxValue') or 1000)
+    sort_order = int(body.get('sortOrder') or 0)
+
+    if action == 'create':
+        if not key or not label:
+            return resp({'error': 'Укажите ключ и название'}, 400)
+        conn = get_conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"INSERT INTO {SCHEMA}.special_stats (key, label, max_value, sort_order) "
+                    f"VALUES (%s, %s, %s, %s) RETURNING id, key, label, max_value, sort_order",
+                    (key, label, max_value, sort_order)
+                )
+                row = cur.fetchone()
+            conn.commit()
+        except psycopg2.errors.UniqueViolation:
+            conn.rollback()
+            return resp({'error': f'Характеристика с ключом «{key}» уже существует'}, 409)
+        finally:
+            conn.close()
+        return resp(row_to_special_stat(row), 201)
+
+    if action == 'update':
+        sid = body.get('id')
+        if not sid or not label:
+            return resp({'error': 'Укажите id и название'}, 400)
+        conn = get_conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"UPDATE {SCHEMA}.special_stats SET label=%s, max_value=%s, sort_order=%s "
+                    f"WHERE id=%s RETURNING id, key, label, max_value, sort_order",
+                    (label, max_value, sort_order, sid)
+                )
+                row = cur.fetchone()
+            conn.commit()
+        finally:
+            conn.close()
+        if not row:
+            return resp({'error': 'Характеристика не найдена'}, 404)
+        return resp(row_to_special_stat(row))
+
+    if action == 'delete':
+        sid = body.get('id')
+        if not sid:
+            return resp({'error': 'Укажите id'}, 400)
+        conn = get_conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(f"DELETE FROM {SCHEMA}.special_stats WHERE id=%s RETURNING id", (sid,))
+                row = cur.fetchone()
+            conn.commit()
+        finally:
+            conn.close()
+        if not row:
+            return resp({'error': 'Характеристика не найдена'}, 404)
+        return resp({'ok': True})
+
+    return resp({'error': 'Неизвестный action'}, 400)
+
+
 HANDLERS = {
     'roles': handle_roles,
     'traits': handle_traits,
     'abilities': handle_abilities,
     'formations': handle_formations,
+    'special_stats': handle_special_stats,
 }
 
 
 def handler(event: dict, context) -> dict:
-    """Единый справочник: roles, traits, abilities, formations. Передай type= в query или body."""
+    """Единый справочник: roles, traits, abilities, formations, special_stats. Передай type= в query или body."""
     if event.get('httpMethod') == 'OPTIONS':
         return {'statusCode': 200, 'headers': CORS, 'body': ''}
 
@@ -399,7 +480,7 @@ def handler(event: dict, context) -> dict:
 
     ref_type = params.get('type') or body.get('type', '')
     if ref_type not in HANDLERS:
-        return resp({'error': 'Укажите type: roles, traits, abilities или formations'}, 400)
+        return resp({'error': 'Укажите type: roles, traits, abilities, formations или special_stats'}, 400)
 
     admin = get_admin_user(event)
     if method == 'POST' and not admin:

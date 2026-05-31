@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Rarity, UnitClass, UnitSubtype, TreatyCategory } from '@/data/types';
+import { SpecialStatDef } from '@/hooks/useAppData';
 import Icon from '@/components/ui/icon';
 import AvatarUpload from '@/components/AvatarUpload';
 import { UNIT_CLASSES, UNIT_SUBTYPES, SUBTYPE_CLASS, RARITIES, RARITY_LABELS, DEFAULT_UNIT_STATS, STAT_LABELS } from './adminConstants';
@@ -18,11 +19,12 @@ function initModifiers(treaty?: Record<string, unknown> | null): Record<string, 
   return result;
 }
 
-export function TreatyModal({ treaty, onSave, onClose, categories = [] }: {
+export function TreatyModal({ treaty, onSave, onClose, categories = [], specialStats = [] }: {
   treaty?: Record<string, unknown> | null;
   onSave: (data: Record<string, unknown>) => Promise<void>;
   onClose: () => void;
   categories?: TreatyCategory[];
+  specialStats?: SpecialStatDef[];
 }) {
   const editing = !!treaty;
   const [loading, setLoading] = useState(false);
@@ -151,9 +153,15 @@ export function TreatyModal({ treaty, onSave, onClose, categories = [] }: {
             <label className="text-xs text-muted-foreground block mb-2">Модификаторы характеристик</label>
             {Object.entries(modifiers).length > 0 && (
               <div className="space-y-1.5 mb-3">
-                {Object.entries(modifiers).map(([key, entry]) => (
+                {Object.entries(modifiers).map(([key, entry]) => {
+                  const specialLabel = specialStats.find(s => s.key === key)?.label;
+                  const displayLabel = STAT_LABELS[key] || specialLabel || key;
+                  const isSpecial = !STAT_LABELS[key] && !!specialLabel;
+                  return (
                   <div key={key} className="flex items-center gap-2 text-xs">
-                    <span className="text-muted-foreground font-mono-data flex-1 truncate">{STAT_LABELS[key] || key}</span>
+                    <span className={`font-mono-data flex-1 truncate ${isSpecial ? 'text-purple-400' : 'text-muted-foreground'}`}>
+                      {isSpecial && <span className="mr-1 opacity-60">✦</span>}{displayLabel}
+                    </span>
                     <span className={`font-mono-data font-semibold ${parseFloat(entry.value) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                       {parseFloat(entry.value) >= 0 ? '+' : ''}{entry.value}{entry.type === 'percent' ? '%' : ''}
                     </span>
@@ -165,12 +173,20 @@ export function TreatyModal({ treaty, onSave, onClose, categories = [] }: {
                       <Icon name="X" size={12} />
                     </button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
             <div className="flex gap-2">
               <select value={newModKey} onChange={e => setNewModKey(e.target.value)} className="flex-1 bg-background border border-border rounded-sm px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary">
-                {statOptions.map(s => <option key={s} value={s}>{STAT_LABELS[s] || s}</option>)}
+                <optgroup label="Стандартные">
+                  {statOptions.map(s => <option key={s} value={s}>{STAT_LABELS[s] || s}</option>)}
+                </optgroup>
+                {specialStats.length > 0 && (
+                  <optgroup label="✦ Особые">
+                    {specialStats.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+                  </optgroup>
+                )}
               </select>
               <input type="number" value={newModVal} onChange={e => setNewModVal(e.target.value)}
                 className="w-20 bg-background border border-border rounded-sm px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"

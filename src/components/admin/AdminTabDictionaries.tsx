@@ -1,4 +1,4 @@
-import { UnitRoleDef, TraitDef, AbilityDef } from '@/hooks/useAppData';
+import { UnitRoleDef, TraitDef, AbilityDef, SpecialStatDef } from '@/hooks/useAppData';
 import { Formation, TraitColor } from '@/data/types';
 import Icon from '@/components/ui/icon';
 import AvatarUpload from '@/components/AvatarUpload';
@@ -423,3 +423,109 @@ export function AdminTabAbilities({ abilities, abilityForm, abilityEditing, abil
 
 export type { AbilityFormState };
 export { statOptions };
+
+// ── Special Stats Tab ──
+export interface SpecialStatForm {
+  key: string;
+  label: string;
+  maxValue: string;
+  sortOrder: string;
+}
+
+interface AdminTabSpecialStatsProps {
+  specialStats: SpecialStatDef[];
+  form: SpecialStatForm;
+  editing: SpecialStatDef | null;
+  loading: boolean;
+  onFormChange: (form: SpecialStatForm) => void;
+  onSave: () => void;
+  onEdit: (s: SpecialStatDef) => void;
+  onDelete: (s: SpecialStatDef) => void;
+  onCancelEdit: () => void;
+}
+
+const inputCls = 'w-full bg-background border border-border rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary';
+
+export function AdminTabSpecialStats({ specialStats, form, editing, loading, onFormChange, onSave, onEdit, onDelete, onCancelEdit }: AdminTabSpecialStatsProps) {
+  return (
+    <div className="max-w-xl">
+      <div className="bg-card border border-border rounded-sm p-4 mb-4">
+        <h4 className="text-xs text-muted-foreground uppercase tracking-widest mb-3">
+          {editing ? 'Редактировать характеристику' : 'Новая характеристика'}
+        </h4>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1.5">
+                Ключ <span className="opacity-50">(camelCase, латиница)</span>
+              </label>
+              <input
+                type="text"
+                value={form.key}
+                onChange={e => onFormChange({ ...form, key: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') })}
+                disabled={!!editing}
+                className={inputCls + (editing ? ' opacity-50 cursor-not-allowed' : '')}
+                placeholder="shootingSpeed"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1.5">Название</label>
+              <input type="text" value={form.label} onChange={e => onFormChange({ ...form, label: e.target.value })}
+                className={inputCls} placeholder="Скорость стрельбы" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1.5">Максимум (для шкалы)</label>
+              <input type="number" value={form.maxValue} onChange={e => onFormChange({ ...form, maxValue: e.target.value })}
+                className={inputCls} placeholder="1000" min={1} />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1.5">Порядок сортировки</label>
+              <input type="number" value={form.sortOrder} onChange={e => onFormChange({ ...form, sortOrder: e.target.value })}
+                className={inputCls} placeholder="0" />
+            </div>
+          </div>
+          <div className="p-3 rounded-sm bg-purple-900/10 border border-purple-500/20 text-xs text-purple-300/70">
+            Ключ используется в модификаторах трактатов. После создания ключ нельзя изменить.
+          </div>
+          <div className="flex gap-2">
+            <button onClick={onSave} disabled={loading || !form.key.trim() || !form.label.trim()}
+              className="flex items-center gap-2 px-4 py-2 text-xs bg-primary text-primary-foreground rounded-sm hover:bg-primary/90 disabled:opacity-50 transition-colors">
+              <Icon name={loading ? 'Loader' : (editing ? 'Save' : 'Plus')} size={12} className={loading ? 'animate-spin' : ''} />
+              {editing ? 'Сохранить' : 'Добавить'}
+            </button>
+            {editing && (
+              <button onClick={onCancelEdit} className="px-4 py-2 text-xs border border-border rounded-sm hover:bg-muted transition-colors">
+                Отмена
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {specialStats.map(s => (
+          <div key={s.id} className="bg-card border border-border rounded-sm p-3 flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="text-sm font-medium text-foreground">{s.label}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-purple-900/30 text-purple-400 font-mono-data">{s.key}</span>
+              </div>
+              <p className="text-xs text-muted-foreground">Макс: {s.maxValue} · Порядок: {s.sortOrder}</p>
+            </div>
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <button onClick={() => onEdit(s)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs border border-border rounded-sm hover:bg-muted transition-colors">
+                <Icon name="Pencil" size={11} /> Изменить
+              </button>
+              <button onClick={() => onDelete(s)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs border border-destructive/40 text-destructive rounded-sm hover:bg-destructive/10 transition-colors">
+                <Icon name="Trash2" size={11} /> Удалить
+              </button>
+            </div>
+          </div>
+        ))}
+        {specialStats.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Особых характеристик пока нет</p>}
+      </div>
+    </div>
+  );
+}

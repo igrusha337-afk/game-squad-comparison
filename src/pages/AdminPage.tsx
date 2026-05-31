@@ -13,8 +13,10 @@ import { AdminTabTreatyCategories } from '@/components/admin/AdminTabTreatyCateg
 import { useAdminUnits } from './admin/useAdminUnits';
 import { useAdminDictionaries } from './admin/useAdminDictionaries';
 import { useAdminModeration } from './admin/useAdminModeration';
+import { AdminTabSpecialStats } from '@/components/admin/AdminTabDictionaries';
+import { useSpecialStats } from '@/hooks/useAppData';
 
-type AdminTab = 'stats' | 'units' | 'treaties' | 'treaty-categories' | 'roles' | 'formations' | 'traits' | 'abilities' | 'moderation';
+type AdminTab = 'stats' | 'units' | 'treaties' | 'treaty-categories' | 'roles' | 'formations' | 'traits' | 'abilities' | 'special-stats' | 'moderation';
 
 const TAB_LABELS: Record<AdminTab, string> = {
   stats: 'Статистика',
@@ -25,6 +27,7 @@ const TAB_LABELS: Record<AdminTab, string> = {
   formations: 'Построения',
   traits: 'Особенности',
   abilities: 'Умения',
+  'special-stats': 'Особые статы',
   moderation: 'Публикации',
 };
 
@@ -36,6 +39,7 @@ export default function AdminPage() {
   const { formations, invalidate: invalidateFormations } = useFormations();
   const { traits, invalidate: invalidateTraits } = useTraits();
   const { abilities, invalidate: invalidateAbilities } = useAbilities();
+  const { specialStats, invalidate: invalidateSpecialStats } = useSpecialStats();
 
   const [tab, setTab] = useState<AdminTab>('stats');
   const [siteStats, setSiteStats] = useState<SiteStats | null>(null);
@@ -45,7 +49,7 @@ export default function AdminPage() {
   const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => setToast({ message, type }), []);
 
   const units$ = useAdminUnits(invalidateUnits, invalidateTreaties, showToast);
-  const dict$ = useAdminDictionaries(invalidateRoles, invalidateFormations, invalidateTraits, invalidateAbilities, showToast);
+  const dict$ = useAdminDictionaries(invalidateRoles, invalidateFormations, invalidateTraits, invalidateAbilities, invalidateSpecialStats, showToast);
   const mod$ = useAdminModeration(showToast);
 
   useEffect(() => { units$.loadData(); }, [units$.loadData]);
@@ -69,7 +73,7 @@ export default function AdminPage() {
     );
   }
 
-  const allTabs: AdminTab[] = ['stats', 'units', 'treaties', 'treaty-categories', 'roles', 'formations', 'traits', 'abilities', 'moderation'];
+  const allTabs: AdminTab[] = ['stats', 'units', 'treaties', 'treaty-categories', 'roles', 'formations', 'traits', 'abilities', 'special-stats', 'moderation'];
 
   return (
     <div className="max-w-5xl">
@@ -197,6 +201,20 @@ export default function AdminPage() {
         />
       )}
 
+      {tab === 'special-stats' && (
+        <AdminTabSpecialStats
+          specialStats={specialStats}
+          form={dict$.specialStatForm}
+          editing={dict$.specialStatEditing}
+          loading={dict$.specialStatLoading}
+          onFormChange={dict$.setSpecialStatForm}
+          onSave={dict$.handleSaveSpecialStat}
+          onEdit={dict$.startEditSpecialStat}
+          onDelete={dict$.handleDeleteSpecialStat}
+          onCancelEdit={dict$.cancelEditSpecialStat}
+        />
+      )}
+
       {tab === 'moderation' && (
         <AdminTabModeration
           pendingTopics={mod$.pendingTopics}
@@ -221,6 +239,7 @@ export default function AdminPage() {
           onSave={units$.handleSaveTreaty}
           onClose={() => units$.setTreatyModal({ open: false })}
           categories={units$.treatyCategories}
+          specialStats={specialStats}
         />
       )}
       {units$.confirmDelete && (

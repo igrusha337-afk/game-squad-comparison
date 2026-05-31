@@ -143,6 +143,17 @@ export const traitsApi = {
     request(URLS.referenceApi, { method: 'POST', body: JSON.stringify({ type: 'traits', action: 'delete', id }) }),
 };
 
+// Special Stats
+export const specialStatsApi = {
+  list: () => request(`${URLS.referenceApi}?type=special_stats`),
+  create: (data: { key: string; label: string; maxValue: number; sortOrder: number }) =>
+    request(URLS.referenceApi, { method: 'POST', body: JSON.stringify({ type: 'special_stats', action: 'create', ...data }) }),
+  update: (id: number, data: { label: string; maxValue: number; sortOrder: number }) =>
+    request(URLS.referenceApi, { method: 'POST', body: JSON.stringify({ type: 'special_stats', action: 'update', id, ...data }) }),
+  delete: (id: number) =>
+    request(URLS.referenceApi, { method: 'POST', body: JSON.stringify({ type: 'special_stats', action: 'delete', id }) }),
+};
+
 // Abilities
 export const abilitiesApi = {
   list: () => request(`${URLS.referenceApi}?type=abilities`),
