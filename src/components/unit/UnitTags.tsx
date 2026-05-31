@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { UnitStats, Ability, Trait, Formation } from '@/data/types';
 import Icon from '@/components/ui/icon';
+import TreatyModifierBadge from '@/components/TreatyModifierBadge';
 
 export const CLASS_ICONS: Record<string, string> = {
   'Пехота': 'Sword', 'Кавалерия': 'Zap', 'Стрелки': 'Crosshair', 'Осадные': 'Hammer',
@@ -15,6 +16,42 @@ export const STAT_LABEL_MAP: Partial<Record<keyof UnitStats, string>> = {
   piercingDefense: 'Защ. (прон.)', slashingDefense: 'Защ. (руб.)', bluntDefense: 'Защ. (дроб.)',
   block: 'Блок', blockRecovery: 'Восст. блока',
 };
+
+// Словарь для произвольных ключей трактатов, не входящих в UnitStats
+export const EXTRA_STAT_LABELS: Record<string, string> = {
+  shootingSpeed:   'Скор. стрельбы',
+  accuracy:        'Точность',
+  reloadSpeed:     'Скор. перезарядки',
+  aimTime:         'Время прицел.',
+  volleySize:      'Залп',
+  chargeBonus:     'Бонус атаки',
+  chargeDamage:    'Урон при атаке',
+  chargeDefense:   'Защ. от атаки',
+  siegeDamage:     'Осадный урон',
+  siegeDefense:    'Осадная защита',
+  supplyCapacity:  'Вместимость обоза',
+  garrisonCapacity:'Вместимость гарниз.',
+  construction:    'Строительство',
+  training:        'Обучение',
+  upkeep:          'Содержание',
+  fatigue:         'Усталость',
+  fear:            'Страх',
+  courage:         'Храбрость',
+  stamina:         'Выносливость',
+  experience:      'Опыт',
+  veterancy:       'Ветеранство',
+};
+
+/** Возвращает человекочитаемое название стата и флаг is_known */
+export function resolveStatLabel(key: string): { label: string; known: boolean } {
+  const inMap = STAT_LABEL_MAP[key as keyof UnitStats];
+  if (inMap) return { label: inMap, known: true };
+  const inExtra = EXTRA_STAT_LABELS[key];
+  if (inExtra) return { label: inExtra, known: false };
+  // Форматируем camelCase → читаемое, если совсем неизвестный ключ
+  const readable = key.replace(/([A-Z])/g, ' $1').toLowerCase();
+  return { label: readable, known: false };
+}
 
 export function getAbilityObj(ab: string | Ability): Ability | null {
   if (typeof ab === 'string') return null;
@@ -66,14 +103,10 @@ function AbilityTooltip({ ability, anchorRef }: { ability: Ability; anchorRef: R
       {hasModifiers && (
         <div className="flex flex-wrap gap-1 border-t border-border pt-2">
           {Object.entries(ability.statModifiers || {}).map(([stat, val]) => (
-            <span key={stat} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${(val || 0) > 0 ? 'bg-blue-900/30 text-blue-400' : 'bg-orange-900/30 text-orange-400'}`}>
-              {STAT_LABEL_MAP[stat as keyof UnitStats] ?? stat}: {(val || 0) > 0 ? '+' : ''}{val}
-            </span>
+            <TreatyModifierBadge key={stat} statKey={stat} value={val as number} scheme="ability" />
           ))}
           {Object.entries(ability.statModifiersEx || {}).map(([stat, entry]) => (
-            <span key={`ex-${stat}`} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${entry.value > 0 ? 'bg-blue-900/30 text-blue-400' : 'bg-orange-900/30 text-orange-400'}`}>
-              {STAT_LABEL_MAP[stat as keyof UnitStats] ?? stat}: {entry.value > 0 ? '+' : ''}{entry.value}%
-            </span>
+            <TreatyModifierBadge key={`ex-${stat}`} statKey={stat} value={entry.value} isPercent scheme="ability" />
           ))}
         </div>
       )}

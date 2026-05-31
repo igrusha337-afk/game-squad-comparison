@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Unit, UnitStats, TreatyCategory } from '@/data/types';
-import { Treaty } from '@/data/types';
+import { Unit, TreatyCategory } from '@/data/types';
+import { Treaty, UnitStats } from '@/data/types';
 import RarityBadge from '@/components/RarityBadge';
 import Icon from '@/components/ui/icon';
-import { STAT_LABEL_MAP, getAbilityObj } from './UnitTags';
+import { getAbilityObj } from './UnitTags';
 import SaveBuildModal from './SaveBuildModal';
 import { useAuth } from '@/context/AuthContext';
+import TreatyModifierBadge from '@/components/TreatyModifierBadge';
 
 const TREATY_LIMIT = 5;
 
@@ -134,14 +135,10 @@ export default function UnitSidebar({
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {Object.entries(t.statModifiers || {}).map(([stat, val]) => (
-                    <span key={stat} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${(val || 0) > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
-                      {STAT_LABEL_MAP[stat as keyof UnitStats] ?? stat}: {(val || 0) > 0 ? '+' : ''}{val}
-                    </span>
+                    <TreatyModifierBadge key={stat} statKey={stat} value={val as number} />
                   ))}
                   {Object.entries(t.statModifiersEx || {}).map(([stat, entry]) => (
-                    <span key={`ex-${stat}`} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${entry.value > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
-                      {STAT_LABEL_MAP[stat as keyof UnitStats] ?? stat}: {entry.value > 0 ? '+' : ''}{entry.value}%
-                    </span>
+                    <TreatyModifierBadge key={`ex-${stat}`} statKey={stat} value={entry.value} isPercent />
                   ))}
                 </div>
               </div>
@@ -206,14 +203,10 @@ export default function UnitSidebar({
                     </div>
                     <div className="flex flex-wrap gap-1">
                       {Object.entries(t.statModifiers || {}).map(([stat, val]) => (
-                        <span key={stat} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${(val || 0) > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
-                          {STAT_LABEL_MAP[stat as keyof UnitStats] ?? stat}: {(val || 0) > 0 ? '+' : ''}{val}
-                        </span>
+                        <TreatyModifierBadge key={stat} statKey={stat} value={val as number} />
                       ))}
                       {Object.entries(t.statModifiersEx || {}).map(([stat, entry]) => (
-                        <span key={`ex-${stat}`} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${entry.value > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
-                          {STAT_LABEL_MAP[stat as keyof UnitStats] ?? stat}: {entry.value > 0 ? '+' : ''}{entry.value}%
-                        </span>
+                        <TreatyModifierBadge key={`ex-${stat}`} statKey={stat} value={entry.value} isPercent />
                       ))}
                     </div>
                   </div>

@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useUnits, useTreaties } from '@/hooks/useAppData';
-import { STAT_GROUPS, ALL_STATS } from '@/data/statGroups';
+import { STAT_GROUPS } from '@/data/statGroups';
 import { Unit, UnitStats, Ability } from '@/data/types';
 import RarityBadge from '@/components/RarityBadge';
 import StarRating from '@/components/StarRating';
 import Icon from '@/components/ui/icon';
+import TreatyModifierBadge from '@/components/TreatyModifierBadge';
 
 interface ComparePageProps {
   appliedTreaties: Record<string, string[]>;
@@ -420,36 +421,12 @@ export default function ComparePage({ appliedTreaties, onApply, onRemove }: Comp
                           </button>
                         </div>
                         <div className="flex flex-wrap gap-1">
-                          {Object.entries(t.statModifiers).map(([stat, val]) => {
-                            const statDef = ALL_STATS.find(s => s.key === stat);
-                            const shortLabel = statDef
-                              ? statDef.label.length > 15 ? statDef.label.slice(0, 14) + '…' : statDef.label
-                              : stat;
-                            return (
-                              <span
-                                key={stat}
-                                className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${(val || 0) > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}
-                              >
-                                {shortLabel}: {(val || 0) > 0 ? '+' : ''}{val}
-                              </span>
-                            );
-                          })}
-                          {t.statModifiersEx && Object.entries(t.statModifiersEx).map(([stat, ex]) => {
-                            const statDef = ALL_STATS.find(s => s.key === stat);
-                            const shortLabel = statDef
-                              ? statDef.label.length > 15 ? statDef.label.slice(0, 14) + '…' : statDef.label
-                              : stat;
-                            const val = ex.value;
-                            const display = ex.type === 'percent' ? `${val > 0 ? '+' : ''}${val}%` : `${val > 0 ? '+' : ''}${val}`;
-                            return (
-                              <span
-                                key={`ex-${stat}`}
-                                className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${val > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}
-                              >
-                                {shortLabel}: {display}
-                              </span>
-                            );
-                          })}
+                          {Object.entries(t.statModifiers).map(([stat, val]) => (
+                            <TreatyModifierBadge key={stat} statKey={stat} value={val as number} />
+                          ))}
+                          {t.statModifiersEx && Object.entries(t.statModifiersEx).map(([stat, ex]) => (
+                            <TreatyModifierBadge key={`ex-${stat}`} statKey={stat} value={ex.value} isPercent={ex.type === 'percent'} />
+                          ))}
                         </div>
                       </div>
                     );
