@@ -36,10 +36,14 @@ export default function UnitDetailPage({ unitId, appliedTreaties, onBack, onAppl
   const unitSubtype = unit.subtype || '';
   const availableTreaties = treaties.filter(t => {
     if (myTreatyIds.includes(t.id)) return false;
+    // совместимость по конкретному ID отряда
+    if (t.compatibleUnitIds && t.compatibleUnitIds.includes(unit.id)) return true;
+    // совместимость по подтипу
     const subtypes = t.compatibleSubtypes;
     if (subtypes && subtypes.length > 0) {
       return unitSubtype ? subtypes.includes(unitSubtype as never) : false;
     }
+    // совместимость по классу
     if (t.compatibleClasses && t.compatibleClasses.length > 0) {
       return t.compatibleClasses.includes(unit.class as never);
     }

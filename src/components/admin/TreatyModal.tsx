@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Rarity, UnitClass, UnitSubtype, TreatyCategory } from '@/data/types';
-import { SpecialStatDef } from '@/hooks/useAppData';
+import { SpecialStatDef, useUnits } from '@/hooks/useAppData';
 import Icon from '@/components/ui/icon';
 import AvatarUpload from '@/components/AvatarUpload';
 import { UNIT_CLASSES, UNIT_SUBTYPES, SUBTYPE_CLASS, RARITIES, RARITY_LABELS, DEFAULT_UNIT_STATS, STAT_LABELS } from './adminConstants';
@@ -27,6 +27,7 @@ export function TreatyModal({ treaty, onSave, onClose, categories = [], specialS
   specialStats?: SpecialStatDef[];
 }) {
   const editing = !!treaty;
+  const { units } = useUnits();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [name, setName] = useState((treaty?.name as string) || '');
@@ -34,12 +35,22 @@ export function TreatyModal({ treaty, onSave, onClose, categories = [], specialS
   const [rarity, setRarity] = useState<Rarity>((treaty?.rarity as Rarity) || 'common');
   const [classes, setClasses] = useState<UnitClass[]>((treaty?.compatibleClasses as UnitClass[]) || []);
   const [subtypes, setSubtypes] = useState<UnitSubtype[]>((treaty?.compatibleSubtypes as UnitSubtype[]) || []);
+  const [unitIds, setUnitIds] = useState<string[]>((treaty?.compatibleUnitIds as string[]) || []);
+  const [unitSearch, setUnitSearch] = useState('');
+  const [showUnitPicker, setShowUnitPicker] = useState((treaty?.compatibleUnitIds as string[] || []).length > 0);
   const [avatarUrl, setAvatarUrl] = useState((treaty?.avatar_url as string) || '');
   const [categoryId, setCategoryId] = useState<number | null>((treaty?.categoryId as number | null) ?? null);
   const [modifiers, setModifiers] = useState<Record<string, ModifierEntry>>(initModifiers(treaty));
   const [newModKey, setNewModKey] = useState('health');
   const [newModVal, setNewModVal] = useState('');
   const [newModType, setNewModType] = useState<'flat' | 'percent'>('flat');
+
+  const toggleUnit = (id: string) =>
+    setUnitIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+
+  const filteredUnits = units.filter(u =>
+    u.name.toLowerCase().includes(unitSearch.toLowerCase())
+  );
 
   const inputCls = "w-full bg-background border border-border rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
   const statOptions = Object.keys(DEFAULT_UNIT_STATS);
@@ -74,7 +85,7 @@ export function TreatyModal({ treaty, onSave, onClose, categories = [], specialS
           else statModifiers[k] = n;
         }
       }
-      await onSave({ name: name.trim(), description, rarity, compatibleClasses: classes, compatibleSubtypes: subtypes, statModifiers, statModifiersEx, avatar_url: avatarUrl, categoryId });
+      await onSave({ name: name.trim(), description, rarity, compatibleClasses: classes, compatibleSubtypes: subtypes, compatibleUnitIds: unitIds, statModifiers, statModifiersEx, avatar_url: avatarUrl, categoryId });
       onClose();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Ошибка сохранения');
@@ -147,6 +158,71 @@ export function TreatyModal({ treaty, onSave, onClose, categories = [], specialS
             </div>
             {subtypes.length > 0 && (
               <p className="text-[10px] text-muted-foreground mt-1.5">Выбрано: {subtypes.length} подтип(ов). Трактат будет доступен только для этих подтипов.</p>
+            )}
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs text-muted-foreground">
+                Конкретные отряды
+                <span className="ml-1.5 opacity-50">(дополнительно к классам/подтипам)</span>
+              </label>
+              <button type="button" onClick={() => setShowUnitPicker(v => !v)}
+                className="text-[10px] text-primary hover:underline">
+                {showUnitPicker ? 'Свернуть' : (unitIds.length > 0 ? `Изменить (${unitIds.length})` : '+ Добавить отряды')}
+              </button>
+            </div>
+            {unitIds.length > 0 && !showUnitPicker && (
+              <div className="flex flex-wrap gap-1">
+                {unitIds.map(id => {
+                  const u = units.find(x => x.id === id);
+                  return u ? (
+                    <span key={id} className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-sm bg-primary/10 border border-primary/30 text-primary">
+                      {u.name}
+                      <button type="button" onClick={() => toggleUnit(id)} className="opacity-60 hover:opacity-100"><Icon name="X" size={9} /></button>
+                    </span>
+                  ) : null;
+                })}
+              </div>
+            )}
+            {showUnitPicker && (
+              <div className="border border-border rounded-sm overflow-hidden">
+                <div className="p-2 border-b border-border bg-muted/30">
+                  <input
+                    type="text"
+                    value={unitSearch}
+                    onChange={e => setUnitSearch(e.target.value)}
+                    placeholder="Поиск отряда..."
+                    className="w-full bg-background border border-border rounded-sm px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+                <div className="max-h-48 overflow-y-auto divide-y divide-border">
+                  {filteredUnits.length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-4">Отряды не найдены</p>
+                  )}
+                  {filteredUnits.map(u => {
+                    const selected = unitIds.includes(u.id);
+                    return (
+                      <button key={u.id} type="button" onClick={() => toggleUnit(u.id)}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-muted/50 ${selected ? 'bg-primary/5' : ''}`}>
+                        <div className={`w-3.5 h-3.5 rounded-sm border flex-shrink-0 flex items-center justify-center transition-colors ${selected ? 'bg-primary border-primary' : 'border-border'}`}>
+                          {selected && <Icon name="Check" size={9} className="text-primary-foreground" />}
+                        </div>
+                        {u.avatar_url && (
+                          <img src={u.avatar_url} alt="" className="w-5 h-5 rounded-sm object-cover flex-shrink-0 opacity-80" />
+                        )}
+                        <span className="text-xs text-foreground truncate flex-1">{u.name}</span>
+                        <span className="text-[10px] text-muted-foreground flex-shrink-0">{u.class}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {unitIds.length > 0 && (
+                  <div className="p-2 border-t border-border bg-muted/20 flex items-center justify-between">
+                    <span className="text-[10px] text-muted-foreground">Выбрано: {unitIds.length}</span>
+                    <button type="button" onClick={() => setUnitIds([])} className="text-[10px] text-destructive hover:underline">Очистить</button>
+                  </div>
+                )}
+              </div>
             )}
           </div>
           <div>

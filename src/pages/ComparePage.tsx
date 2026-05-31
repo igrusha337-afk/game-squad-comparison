@@ -68,6 +68,8 @@ export default function ComparePage({ appliedTreaties, onApply, onRemove }: Comp
 
   const compatibleTreaties = treatyPanelUnitObj
     ? TREATIES.filter(t => {
+        // совместимость по конкретному ID отряда
+        if (t.compatibleUnitIds && t.compatibleUnitIds.includes(treatyPanelUnitObj.id)) return true;
         const unitSubtype = treatyPanelUnitObj.subtype || '';
         const subtypes = t.compatibleSubtypes;
         if (subtypes && subtypes.length > 0) {

@@ -89,6 +89,7 @@ function apiToTreaty(t: Record<string, unknown>): Treaty {
     description: (t.description as string) || '',
     compatibleClasses: (t.compatibleClasses as Treaty['compatibleClasses']) || [],
     compatibleSubtypes: (t.compatibleSubtypes as Treaty['compatibleSubtypes']) || [],
+    compatibleUnitIds: (t.compatibleUnitIds as string[]) || [],
     rarity: t.rarity as Treaty['rarity'],
     statModifiers: (t.statModifiers as Partial<UnitStats>) || {},
     statModifiersEx: (t.statModifiersEx as Partial<Record<keyof UnitStats, StatModifierEntry>>) || undefined,

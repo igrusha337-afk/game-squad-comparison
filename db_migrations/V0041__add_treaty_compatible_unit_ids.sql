@@ -1,0 +1,1 @@
+ALTER TABLE treaties ADD COLUMN IF NOT EXISTS compatible_unit_ids TEXT[] NOT NULL DEFAULT '{}';

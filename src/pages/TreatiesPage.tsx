@@ -37,13 +37,16 @@ export default function TreatiesPage({ appliedTreaties, onApply, onRemove }: Tre
 
   const compatibleTreaties = unit
     ? TREATIES.filter(t => {
+        if (filterCategoryId !== null && t.categoryId !== filterCategoryId) return false;
+        // совместимость по конкретному ID отряда
+        if (t.compatibleUnitIds && t.compatibleUnitIds.includes(unit.id)) return true;
+        // совместимость по подтипу
         const subtypes = t.compatibleSubtypes;
         if (subtypes && subtypes.length > 0) {
           if (!unitSubtype || !subtypes.includes(unitSubtype as never)) return false;
         } else if (t.compatibleClasses.length > 0 && !t.compatibleClasses.includes(unit.class)) {
           return false;
         }
-        if (filterCategoryId !== null && t.categoryId !== filterCategoryId) return false;
         return true;
       })
     : [];

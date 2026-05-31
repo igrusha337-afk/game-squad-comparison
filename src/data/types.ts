@@ -97,6 +97,7 @@ export interface Treaty {
   statModifiersEx?: Partial<Record<keyof UnitStats, StatModifierEntry>>;
   compatibleClasses: UnitClass[];
   compatibleSubtypes?: UnitSubtype[];
+  compatibleUnitIds?: string[]; // конкретные ID отрядов (дополнительно к классам/подтипам)
   rarity: Rarity;
   avatar_url?: string;
   categoryId?: number | null;
