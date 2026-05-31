@@ -3,8 +3,8 @@ import { useParams } from 'react-router-dom';
 import { buildsApi } from '@/lib/api';
 import { useUnits, useTreaties } from '@/hooks/useAppData';
 import { Treaty, UnitStats } from '@/data/types';
+import { ALL_STATS } from '@/data/statGroups';
 import RarityBadge from '@/components/RarityBadge';
-import TreatyModifierBadge from '@/components/TreatyModifierBadge';
 
 import Icon from '@/components/ui/icon';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
@@ -23,7 +23,10 @@ interface Build {
   createdAt: string;
 }
 
-
+const getStatLabel = (key: string) => {
+  const found = ALL_STATS.find(s => s.key === key);
+  return found ? found.label : key;
+};
 
 
 
@@ -147,10 +150,14 @@ export default function BuildPage() {
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {Object.entries(t.statModifiers || {}).map(([stat, val]) => (
-                    <TreatyModifierBadge key={stat} statKey={stat} value={val as number} />
+                    <span key={stat} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${(val || 0) > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                      {getStatLabel(stat)}: {(val || 0) > 0 ? '+' : ''}{val}
+                    </span>
                   ))}
                   {Object.entries(t.statModifiersEx || {}).map(([stat, entry]) => (
-                    <TreatyModifierBadge key={`ex-${stat}`} statKey={stat} value={entry.value} isPercent />
+                    <span key={`ex-${stat}`} className={`font-mono-data text-[10px] px-1.5 py-0.5 rounded-sm ${entry.value > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                      {getStatLabel(stat)}: {entry.value > 0 ? '+' : ''}{entry.value}%
+                    </span>
                   ))}
                 </div>
               </div>
