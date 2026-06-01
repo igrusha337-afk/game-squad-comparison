@@ -73,11 +73,13 @@ export default function ComparePage({ appliedTreaties, onApply, onRemove }: Comp
         const unitSubtype = treatyPanelUnitObj.subtype || '';
         const subtypes = t.compatibleSubtypes;
         if (subtypes && subtypes.length > 0) {
-          if (!unitSubtype || !subtypes.includes(unitSubtype as never)) return false;
-        } else if (t.compatibleClasses.length > 0 && !t.compatibleClasses.includes(treatyPanelUnitObj.class)) {
-          return false;
+          return unitSubtype ? subtypes.includes(unitSubtype as never) : false;
         }
-        return true;
+        if (t.compatibleClasses.length > 0) {
+          return t.compatibleClasses.includes(treatyPanelUnitObj.class);
+        }
+        // нет ни классов, ни подтипов — доступен только конкретным отрядам
+        return false;
       })
     : [];
 

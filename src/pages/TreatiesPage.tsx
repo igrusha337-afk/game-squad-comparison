@@ -43,11 +43,14 @@ export default function TreatiesPage({ appliedTreaties, onApply, onRemove }: Tre
         // совместимость по подтипу
         const subtypes = t.compatibleSubtypes;
         if (subtypes && subtypes.length > 0) {
-          if (!unitSubtype || !subtypes.includes(unitSubtype as never)) return false;
-        } else if (t.compatibleClasses.length > 0 && !t.compatibleClasses.includes(unit.class)) {
-          return false;
+          return unitSubtype ? subtypes.includes(unitSubtype as never) : false;
         }
-        return true;
+        // совместимость по классу
+        if (t.compatibleClasses.length > 0) {
+          return t.compatibleClasses.includes(unit.class);
+        }
+        // нет ни классов, ни подтипов — доступен только конкретным отрядам
+        return false;
       })
     : [];
 
