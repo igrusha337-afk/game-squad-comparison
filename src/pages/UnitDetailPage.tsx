@@ -37,7 +37,11 @@ export default function UnitDetailPage({ unitId, appliedTreaties, onBack, onAppl
   const availableTreaties = treaties.filter(t => {
     if (myTreatyIds.includes(t.id)) return false;
     // совместимость по конкретному ID отряда
-    if (t.compatibleUnitIds && t.compatibleUnitIds.includes(unit.id)) return true;
+    if (t.compatibleUnitIds && t.compatibleUnitIds.length > 0) {
+      if (t.compatibleUnitIds.includes(unit.id)) return true;
+      // список конкретных отрядов задан, но этот отряд не в нём
+      // всё равно проверяем класс/подтип — трактат может быть одновременно для классов + отдельных отрядов
+    }
     // совместимость по подтипу
     const subtypes = t.compatibleSubtypes;
     if (subtypes && subtypes.length > 0) {
@@ -48,7 +52,8 @@ export default function UnitDetailPage({ unitId, appliedTreaties, onBack, onAppl
       return t.compatibleClasses.includes(unit.class as never);
     }
     // нет ни классов, ни подтипов, ни конкретных отрядов — доступен всем
-    return true;
+    if (!t.compatibleUnitIds || t.compatibleUnitIds.length === 0) return true;
+    return false;
   });
 
   const activeAbilities = unit.abilities.filter(ab => {

@@ -69,7 +69,9 @@ export default function ComparePage({ appliedTreaties, onApply, onRemove }: Comp
   const compatibleTreaties = treatyPanelUnitObj
     ? TREATIES.filter(t => {
         // совместимость по конкретному ID отряда
-        if (t.compatibleUnitIds && t.compatibleUnitIds.includes(treatyPanelUnitObj.id)) return true;
+        if (t.compatibleUnitIds && t.compatibleUnitIds.length > 0) {
+          if (t.compatibleUnitIds.includes(treatyPanelUnitObj.id)) return true;
+        }
         const unitSubtype = treatyPanelUnitObj.subtype || '';
         const subtypes = t.compatibleSubtypes;
         if (subtypes && subtypes.length > 0) {
@@ -79,7 +81,8 @@ export default function ComparePage({ appliedTreaties, onApply, onRemove }: Comp
           return t.compatibleClasses.includes(treatyPanelUnitObj.class);
         }
         // нет ни классов, ни подтипов, ни конкретных отрядов — доступен всем
-        return true;
+        if (!t.compatibleUnitIds || t.compatibleUnitIds.length === 0) return true;
+        return false;
       })
     : [];
 
