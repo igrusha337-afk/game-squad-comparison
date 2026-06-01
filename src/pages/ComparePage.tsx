@@ -78,8 +78,8 @@ export default function ComparePage({ appliedTreaties, onApply, onRemove }: Comp
         if (t.compatibleClasses.length > 0) {
           return t.compatibleClasses.includes(treatyPanelUnitObj.class);
         }
-        // нет ни классов, ни подтипов — доступен только конкретным отрядам
-        return false;
+        // нет ни классов, ни подтипов, ни конкретных отрядов — доступен всем
+        return true;
       })
     : [];
 

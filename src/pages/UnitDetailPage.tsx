@@ -47,8 +47,8 @@ export default function UnitDetailPage({ unitId, appliedTreaties, onBack, onAppl
     if (t.compatibleClasses && t.compatibleClasses.length > 0) {
       return t.compatibleClasses.includes(unit.class as never);
     }
-    // нет ни классов, ни подтипов — доступен только конкретным отрядам
-    return false;
+    // нет ни классов, ни подтипов, ни конкретных отрядов — доступен всем
+    return true;
   });
 
   const activeAbilities = unit.abilities.filter(ab => {

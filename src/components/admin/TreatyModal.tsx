@@ -130,7 +130,18 @@ export function TreatyModal({ treaty, onSave, onClose, categories = [], specialS
             </select>
           </div>
           <div>
-            <label className="text-xs text-muted-foreground block mb-2">Совместимые классы</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs text-muted-foreground">Совместимые классы</label>
+              {(classes.length > 0 || subtypes.length > 0 || unitIds.length > 0) ? (
+                <button type="button"
+                  onClick={() => { setClasses([]); setSubtypes([]); setUnitIds([]); setShowUnitPicker(false); }}
+                  className="text-[10px] text-muted-foreground hover:text-foreground border border-border rounded-sm px-2 py-0.5 transition-colors">
+                  Очистить всё → для всех отрядов
+                </button>
+              ) : (
+                <span className="text-[10px] text-green-400/80">✓ Доступен всем отрядам</span>
+              )}
+            </div>
             <div className="flex flex-wrap gap-2">
               {UNIT_CLASSES.map(cls => (
                 <button key={cls} type="button" onClick={() => toggleClass(cls)}

@@ -49,8 +49,8 @@ export default function TreatiesPage({ appliedTreaties, onApply, onRemove }: Tre
         if (t.compatibleClasses.length > 0) {
           return t.compatibleClasses.includes(unit.class);
         }
-        // нет ни классов, ни подтипов — доступен только конкретным отрядам
-        return false;
+        // нет ни классов, ни подтипов, ни конкретных отрядов — доступен всем
+        return true;
       })
     : [];
 
