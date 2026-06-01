@@ -6,7 +6,7 @@ type Page = 'catalog' | 'compare' | 'treaties' | 'houses' | 'forum' | 'guides' |
 const NAV_ITEMS: Array<{ id: Page; label: string; icon: string; adminOnly?: boolean; authOnly?: boolean; hidden?: boolean }> = [
   { id: 'catalog',  label: 'Каталог',    icon: 'LayoutGrid' },
   { id: 'compare',  label: 'Сравнение',  icon: 'Swords' },
-  { id: 'treaties', label: 'Трактаты',   icon: 'ScrollText', hidden: true },
+  { id: 'treaties', label: 'Трактаты',   icon: 'ScrollText', adminOnly: true },
   { id: 'houses',   label: 'Дома CB',    icon: 'Shield' },
   { id: 'forum',    label: 'Форум',      icon: 'MessageSquare' },
   { id: 'guides',   label: 'Гайды',      icon: 'BookOpen' },
