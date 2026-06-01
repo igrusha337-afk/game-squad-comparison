@@ -3,10 +3,10 @@ import { ShieldEmblem, OrnateDivider } from './SidebarDecorations';
 
 type Page = 'catalog' | 'compare' | 'treaties' | 'houses' | 'forum' | 'guides' | 'game' | 'about' | 'auth' | 'admin' | 'profile' | 'messages';
 
-const NAV_ITEMS: Array<{ id: Page; label: string; icon: string; adminOnly?: boolean; authOnly?: boolean }> = [
+const NAV_ITEMS: Array<{ id: Page; label: string; icon: string; adminOnly?: boolean; authOnly?: boolean; hidden?: boolean }> = [
   { id: 'catalog',  label: 'Каталог',    icon: 'LayoutGrid' },
   { id: 'compare',  label: 'Сравнение',  icon: 'Swords' },
-  { id: 'treaties', label: 'Трактаты',   icon: 'ScrollText' },
+  { id: 'treaties', label: 'Трактаты',   icon: 'ScrollText', hidden: true },
   { id: 'houses',   label: 'Дома CB',    icon: 'Shield' },
   { id: 'forum',    label: 'Форум',      icon: 'MessageSquare' },
   { id: 'guides',   label: 'Гайды',      icon: 'BookOpen' },
@@ -26,7 +26,7 @@ interface SidebarProps {
 
 export default function Sidebar({ page, detailUnitId, mobileMenuOpen, isAdmin, onNavigate, onCloseMobile }: SidebarProps) {
   const visibleNav = NAV_ITEMS.filter(item =>
-    (!item.adminOnly || isAdmin) && (!item.authOnly)
+    !item.hidden && (!item.adminOnly || isAdmin) && (!item.authOnly)
   );
 
   return (
