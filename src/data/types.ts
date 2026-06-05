@@ -15,6 +15,7 @@ export type UnitSubtype =
   | 'Кавалерия - копейщик'
   | 'Кавалерия - ближний бой'
   | 'Кавалерия - лучник'
+  | 'Кавалерия - дротики'
   | 'Кавалерия - особый';
 
 export function parseUnitSubtype(description: string): UnitSubtype | null {
@@ -36,6 +37,7 @@ export function parseUnitSubtype(description: string): UnitSubtype | null {
     if (d.includes('копейщик') || d.includes('копейщики')) return 'Кавалерия - копейщик';
     if (d.includes('ближний бой')) return 'Кавалерия - ближний бой';
     if (d.includes('лучник')) return 'Кавалерия - лучник';
+    if (d.includes('дротик')) return 'Кавалерия - дротики';
     if (d.includes('особ')) return 'Кавалерия - особый';
   }
   return null;
