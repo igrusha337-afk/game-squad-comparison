@@ -1,4 +1,10 @@
 import Icon from '@/components/ui/icon';
+import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+
+interface DailyPoint { date: string; visitors: number; }
+interface TopPage { path: string; views: number; unique: number; }
+interface NewUsersPoint { date: string; count: number; }
+interface HourlyPoint { hour: number; views: number; }
 
 interface SiteStats {
   total_unique: number;
@@ -7,13 +13,32 @@ interface SiteStats {
   week_unique: number;
   month_unique: number;
   total_users: number;
-  daily: { date: string; visitors: number }[];
+  avg_views_per_visitor: number;
+  daily: DailyPoint[];
+  top_pages: TopPage[];
+  new_users_daily: NewUsersPoint[];
+  hourly: HourlyPoint[];
 }
 
 interface AdminTabStatsProps {
   siteStats: SiteStats | null;
   statsLoading: boolean;
 }
+
+function decodePath(path: string): string {
+  try {
+    return decodeURIComponent(path);
+  } catch {
+    return path;
+  }
+}
+
+const CHART_TOOLTIP_STYLE = {
+  background: 'hsl(var(--popover))',
+  border: '1px solid hsl(var(--border))',
+  borderRadius: '4px',
+  fontSize: '12px',
+};
 
 export function AdminTabStats({ siteStats, statsLoading }: AdminTabStatsProps) {
   return (
@@ -24,7 +49,7 @@ export function AdminTabStats({ siteStats, statsLoading }: AdminTabStatsProps) {
         <div className="py-12 text-center text-muted-foreground text-sm">Нет данных</div>
       ) : (
         <div className="space-y-6">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
               { label: 'За сегодня', value: siteStats.today_unique, icon: 'CalendarDays' },
               { label: 'За 7 дней', value: siteStats.week_unique, icon: 'TrendingUp' },
@@ -32,6 +57,7 @@ export function AdminTabStats({ siteStats, statsLoading }: AdminTabStatsProps) {
               { label: 'Всего уникальных', value: siteStats.total_unique, icon: 'Users' },
               { label: 'Всего просмотров', value: siteStats.total_views, icon: 'Eye' },
               { label: 'Зарегистрировано', value: siteStats.total_users, icon: 'UserCheck' },
+              { label: 'Просмотров на посетителя', value: siteStats.avg_views_per_visitor, icon: 'Activity' },
             ].map(({ label, value, icon }) => (
               <div key={label} className="bg-card border border-border rounded-sm p-4">
                 <div className="flex items-center gap-2 text-muted-foreground mb-1">
@@ -46,25 +72,71 @@ export function AdminTabStats({ siteStats, statsLoading }: AdminTabStatsProps) {
           {siteStats.daily.length > 0 && (
             <div className="bg-card border border-border rounded-sm p-4">
               <div className="text-xs text-muted-foreground mb-4">Уникальные посетители за 30 дней</div>
-              <div className="flex items-end gap-1 h-24">
-                {(() => {
-                  const max = Math.max(...siteStats.daily.map(d => d.visitors), 1);
-                  return siteStats.daily.map(d => (
-                    <div key={d.date} className="flex-1 flex flex-col items-center gap-1 group relative">
-                      <div
-                        className="w-full bg-primary/60 rounded-sm hover:bg-primary transition-colors"
-                        style={{ height: `${(d.visitors / max) * 100}%`, minHeight: d.visitors > 0 ? '2px' : '0' }}
-                      />
-                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-popover border border-border text-xs px-1.5 py-0.5 rounded hidden group-hover:block whitespace-nowrap z-10">
-                        {d.date.slice(5)}: {d.visitors}
-                      </div>
-                    </div>
-                  ));
-                })()}
-              </div>
-              <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                <span>{siteStats.daily[0]?.date.slice(5)}</span>
-                <span>{siteStats.daily[siteStats.daily.length - 1]?.date.slice(5)}</span>
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={siteStats.daily} margin={{ left: -20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="date" tickFormatter={d => d.slice(5)} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                  <Tooltip
+                    contentStyle={CHART_TOOLTIP_STYLE}
+                    labelFormatter={d => String(d).slice(5)}
+                    formatter={(v: number) => [v, 'Посетители']}
+                  />
+                  <Line type="monotone" dataKey="visitors" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {siteStats.new_users_daily.length > 0 && (
+            <div className="bg-card border border-border rounded-sm p-4">
+              <div className="text-xs text-muted-foreground mb-4">Новые регистрации за 30 дней</div>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={siteStats.new_users_daily} margin={{ left: -20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="date" tickFormatter={d => d.slice(5)} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                  <Tooltip
+                    contentStyle={CHART_TOOLTIP_STYLE}
+                    labelFormatter={d => String(d).slice(5)}
+                    formatter={(v: number) => [v, 'Регистраций']}
+                  />
+                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {siteStats.hourly.length > 0 && (
+            <div className="bg-card border border-border rounded-sm p-4">
+              <div className="text-xs text-muted-foreground mb-4">Активность по часам суток (за 30 дней)</div>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={siteStats.hourly} margin={{ left: -20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="hour" tickFormatter={h => `${h}:00`} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                  <Tooltip
+                    contentStyle={CHART_TOOLTIP_STYLE}
+                    labelFormatter={h => `${h}:00`}
+                    formatter={(v: number) => [v, 'Просмотров']}
+                  />
+                  <Bar dataKey="views" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {siteStats.top_pages.length > 0 && (
+            <div className="bg-card border border-border rounded-sm p-4">
+              <div className="text-xs text-muted-foreground mb-4">Топ-10 популярных страниц</div>
+              <div className="space-y-2">
+                {siteStats.top_pages.map((p, i) => (
+                  <div key={p.path} className="flex items-center gap-3 text-sm">
+                    <span className="text-xs text-muted-foreground w-4">{i + 1}</span>
+                    <span className="flex-1 truncate text-foreground">{decodePath(p.path)}</span>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">{p.unique} уник. · {p.views} просм.</span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -170,7 +242,7 @@ export function AdminTabModeration({
               <div className="space-y-3">
                 {pendingGuides.map(guide => (
                   <div key={guide.id} className="bg-card border border-border rounded-sm p-4">
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-sm text-foreground mb-1">{guide.title}</div>
                         <div className="text-xs text-muted-foreground">

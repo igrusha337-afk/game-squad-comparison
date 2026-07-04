@@ -162,8 +162,38 @@ def handler(event: dict, context) -> dict:
                 cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.users")
                 total_users = cur.fetchone()[0]
 
+                # Топ-10 популярных страниц
+                cur.execute(
+                    f"SELECT path, COUNT(*) AS views, "
+                    f"COUNT(DISTINCT COALESCE(session_id, ip_address)) AS uniq "
+                    f"FROM {SCHEMA}.page_views "
+                    f"GROUP BY path ORDER BY views DESC LIMIT 10"
+                )
+                top_pages = [{'path': r[0], 'views': r[1], 'unique': r[2]} for r in cur.fetchall()]
+
+                # Новые регистрации по дням за 30 дней
+                cur.execute(
+                    f"SELECT date_trunc('day', created_at)::date AS day, COUNT(*) AS cnt "
+                    f"FROM {SCHEMA}.users "
+                    f"WHERE created_at >= now() - interval '30 days' "
+                    f"GROUP BY day ORDER BY day"
+                )
+                new_users_daily = [{'date': str(r[0]), 'count': r[1]} for r in cur.fetchall()]
+
+                # Активность по часам суток за 30 дней
+                cur.execute(
+                    f"SELECT EXTRACT(HOUR FROM visited_at)::int AS hour, COUNT(*) AS cnt "
+                    f"FROM {SCHEMA}.page_views "
+                    f"WHERE visited_at >= now() - interval '30 days' "
+                    f"GROUP BY hour ORDER BY hour"
+                )
+                hourly_map = {r[0]: r[1] for r in cur.fetchall()}
+                hourly = [{'hour': h, 'views': hourly_map.get(h, 0)} for h in range(24)]
+
         finally:
             conn.close()
+
+        avg_views_per_visitor = round(total_views / total_unique, 2) if total_unique else 0
 
         return resp({
             'total_unique': total_unique,
@@ -172,7 +202,11 @@ def handler(event: dict, context) -> dict:
             'week_unique': week_unique,
             'month_unique': month_unique,
             'total_users': total_users,
+            'avg_views_per_visitor': avg_views_per_visitor,
             'daily': daily,
+            'top_pages': top_pages,
+            'new_users_daily': new_users_daily,
+            'hourly': hourly,
         })
 
     return resp({'error': 'Метод не поддерживается'}, 405)
