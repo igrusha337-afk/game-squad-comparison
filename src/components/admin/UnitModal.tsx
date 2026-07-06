@@ -337,7 +337,7 @@ export function UnitModal({ unit, onSave, onClose, availableRoles, availableForm
                           className={inputCls + ' font-mono-data'}
                           step="0.01"
                           min={-9999}
-                          max={key === 'health' ? 30000 : 9999}
+                          max={key === 'health' ? 200000 : 9999}
                         />
                       </div>
                     ))}

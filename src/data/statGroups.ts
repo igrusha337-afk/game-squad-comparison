@@ -20,7 +20,7 @@ export const STAT_GROUPS: StatGroup[] = [
     icon: 'Shield',
     color: 'text-blue-400',
     stats: [
-      { key: 'health',        label: 'Здоровье',          max: 30000 },
+      { key: 'health',        label: 'Здоровье',          max: 200000 },
       { key: 'troops',        label: 'Численность',        max: 3000 },
       { key: 'leadership',    label: 'Лидерство',          max: 3000 },
       { key: 'moveSpeed',     label: 'Скорость движения',  max: 3000 },
@@ -61,7 +61,7 @@ export const ALL_STATS: StatDef[] = STAT_GROUPS.flatMap(g => g.stats);
 
 // Short labels for cards
 export const CARD_STATS: StatDef[] = [
-  { key: 'health',         label: 'Здоровье',        max: 30000 },
+  { key: 'health',         label: 'Здоровье',        max: 200000 },
   { key: 'piercingDamage', label: 'Прон. урон',      max: 3000 },
   { key: 'slashingDamage', label: 'Руб. урон',       max: 3000 },
   { key: 'bluntDamage',    label: 'Дроб. урон',      max: 3000 },
