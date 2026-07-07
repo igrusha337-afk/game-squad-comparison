@@ -361,12 +361,12 @@ export default function AboutPage() {
 
           <div className="grid sm:grid-cols-2 gap-3">
             {[
-              { nick: 'Ник_1', role: 'за помощь в тестировании' },
-              { nick: 'Ник_2', role: 'за помощь в тестировании' },
-              { nick: 'Ник_3', role: 'за помощь в наполнении данными' },
-              { nick: 'Ник_4', role: 'за помощь в наполнении данными' },
-              { nick: 'Ник_5', role: 'за ценные советы и обратную связь' },
-              { nick: 'Ник_6', role: 'за ценные советы и обратную связь' },
+              { nick: 'Alef_Beit', role: 'за помощь в наполнении данными' },
+              { nick: 'Apsilon', role: 'за помощь в тестировании' },
+              { nick: 'Zeozzz', role: 'за помощь в наполнении данными' },
+              { nick: 'Apsilon', role: 'за помощь в наполнении данными' },
+              { nick: 'DOktor_NeAdekvaT', role: 'за ценные советы и обратную связь' },
+              { nick: 'Apsilon', role: 'за ценные советы и обратную связь' },
             ].map(item => (
               <div
                 key={item.nick}
