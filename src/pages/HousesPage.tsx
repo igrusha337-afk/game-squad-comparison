@@ -3,6 +3,9 @@ import { housesApi } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import Icon from '@/components/ui/icon';
 import { cacheGet, cacheSet, cacheInvalidate } from '@/lib/cache';
+import HousesHintModal from '@/components/HousesHintModal';
+
+const HOUSES_HINT_SEEN_KEY = 'houses-hint-seen';
 
 const SERVERS = [
   'EU1 Crystal Sea', 'EU2 Pantheon Warhall', 'EU3',
@@ -49,7 +52,15 @@ export default function HousesPage({ onOpenHouse, onOpenProfile }: Props) {
   const [emblemPreview, setEmblemPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [showHint, setShowHint] = useState(false);
   const emblemRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!localStorage.getItem(HOUSES_HINT_SEEN_KEY)) {
+      setShowHint(true);
+      localStorage.setItem(HOUSES_HINT_SEEN_KEY, '1');
+    }
+  }, []);
 
   const load = useCallback(async (force = false) => {
     const cached = cacheGet<House[]>('houses');
@@ -111,9 +122,18 @@ export default function HousesPage({ onOpenHouse, onOpenProfile }: Props) {
       {/* Шапка */}
       <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div className="min-w-0">
-          <h1 style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: 'clamp(1.6rem, 4vw, 2.2rem)', fontWeight: 700, color: 'hsl(38 24% 94%)', lineHeight: 1.15 }}>
-            Дома CB
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: 'clamp(1.6rem, 4vw, 2.2rem)', fontWeight: 700, color: 'hsl(38 24% 94%)', lineHeight: 1.15 }}>
+              Дома CB
+            </h1>
+            <button onClick={() => setShowHint(true)} title="О разделе"
+              className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
+              style={{ background: 'hsl(222 20% 14%)', border: '1px solid hsl(222 14% 22%)', color: 'hsl(42 50% 58%)' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'hsl(42 76% 50% / 0.15)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'hsl(222 20% 14%)'; }}>
+              <Icon name="HelpCircle" size={14} />
+            </button>
+          </div>
           <p className="text-muted-foreground text-sm mt-0.5">Боевые братства и их рейтинг активности</p>
         </div>
         {canCreate && !showForm && (
@@ -126,6 +146,8 @@ export default function HousesPage({ onOpenHouse, onOpenProfile }: Props) {
           </button>
         )}
       </div>
+
+      {showHint && <HousesHintModal onClose={() => setShowHint(false)} />}
 
       {/* Текущий дом пользователя */}
       {user?.house_id && (
