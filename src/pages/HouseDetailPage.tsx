@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import UserAvatar from '@/components/UserAvatar';
 import Icon from '@/components/ui/icon';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
+import { resizeImageToBase64 } from '@/lib/imageResize';
 
 const SERVERS = [
   'EU1 Crystal Sea', 'EU2 Pantheon Warhall', 'EU3',
@@ -136,8 +137,15 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
   const handleHeaderEmblemChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const base64 = await fileToBase64(file);
-    setHeaderEmblem({ data: base64, type: file.type });
+    if (!file.type.startsWith('image/')) { alert('Выберите файл изображения'); e.target.value = ''; return; }
+    try {
+      const { data, type } = await resizeImageToBase64(file);
+      setHeaderEmblem({ data, type });
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Не удалось обработать изображение');
+    } finally {
+      e.target.value = '';
+    }
   };
 
   const handleSaveHeader = async () => {
@@ -294,10 +302,11 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith('image/')) { alert('Выберите файл изображения'); e.target.value = ''; return; }
     setUploadingPhoto(true);
     try {
-      const base64 = await fileToBase64(file);
-      await housesApi.update(houseId, { photo_file: base64, photo_content_type: file.type });
+      const { data, type } = await resizeImageToBase64(file);
+      await housesApi.update(houseId, { photo_file: data, photo_content_type: type });
       await load();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Ошибка загрузки');

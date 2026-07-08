@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import Icon from '@/components/ui/icon';
 import { cacheGet, cacheSet, cacheInvalidate } from '@/lib/cache';
 import HousesHintModal from '@/components/HousesHintModal';
+import { resizeImageToBase64 } from '@/lib/imageResize';
 
 const HOUSES_HINT_SEEN_KEY = 'houses-hint-seen';
 
@@ -24,15 +25,6 @@ interface House {
   rating_points: number;
   member_count: number;
   created_at: string;
-}
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 }
 
 interface Props {
@@ -81,9 +73,16 @@ export default function HousesPage({ onOpenHouse, onOpenProfile }: Props) {
   const handleEmblemChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const base64 = await fileToBase64(file);
-    setEmblemPreview(base64);
-    setEmblemFile({ data: base64, type: file.type });
+    if (!file.type.startsWith('image/')) { setError('Выберите файл изображения'); e.target.value = ''; return; }
+    try {
+      const { data, type } = await resizeImageToBase64(file);
+      setEmblemPreview(data);
+      setEmblemFile({ data, type });
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Не удалось обработать изображение');
+    } finally {
+      e.target.value = '';
+    }
   };
 
   const handleCreate = async (e: React.FormEvent) => {
