@@ -5,6 +5,7 @@ import UserAvatar from '@/components/UserAvatar';
 import Icon from '@/components/ui/icon';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import { resizeImageToBase64 } from '@/lib/imageResize';
+import ImageLightbox from '@/components/ImageLightbox';
 
 const SERVERS = [
   'EU1 Crystal Sea', 'EU2 Pantheon Warhall', 'EU3',
@@ -90,6 +91,7 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
   const [editingSocials, setEditingSocials] = useState(false);
   const [socialsForm, setSocialsForm] = useState<Record<string, { url: string; visible: boolean }>>({});
   const [savingSocials, setSavingSocials] = useState(false);
+  const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
   const videoRef = useRef<HTMLInputElement>(null);
   const photoRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLInputElement>(null);
@@ -391,8 +393,9 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
           ) : (
           <div className="flex items-start gap-5">
             {/* Герб */}
-            <div className="w-20 h-20 rounded-2xl flex-shrink-0 overflow-hidden flex items-center justify-center"
-              style={{ background: 'hsl(222 20% 14%)', border: '2px solid hsl(42 76% 50% / 0.3)' }}>
+            <div onClick={() => house.emblem_url && setLightboxPhoto(house.emblem_url)}
+              className="w-20 h-20 rounded-2xl flex-shrink-0 overflow-hidden flex items-center justify-center"
+              style={{ background: 'hsl(222 20% 14%)', border: '2px solid hsl(42 76% 50% / 0.3)', cursor: house.emblem_url ? 'pointer' : 'default' }}>
               {house.emblem_url
                 ? <img src={house.emblem_url} alt="" className="w-full h-full object-cover" />
                 : <Icon name="Shield" size={32} style={{ color: 'hsl(42 76% 50% / 0.5)' }} />}
@@ -572,7 +575,8 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
           {house.photos.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {house.photos.map(p => (
-                <div key={p.id} className="aspect-video rounded-xl overflow-hidden">
+                <div key={p.id} onClick={() => setLightboxPhoto(p.photo_url)}
+                  className="aspect-video rounded-xl overflow-hidden cursor-pointer">
                   <img src={p.photo_url} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
                 </div>
               ))}
@@ -582,6 +586,8 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
           )}
         </div>
       )}
+
+      {lightboxPhoto && <ImageLightbox src={lightboxPhoto} onClose={() => setLightboxPhoto(null)} />}
 
       {/* Соцсети */}
       {(canManage || SOCIAL_META.some(s => house.socials?.[s.key]?.visible && house.socials?.[s.key]?.url)) && (
