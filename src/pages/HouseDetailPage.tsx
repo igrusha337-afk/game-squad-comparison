@@ -26,6 +26,7 @@ interface HouseDetail {
   created_at: string;
   photos: { id: number; photo_url: string }[];
   members: { id: number; username: string; avatar_url: string; house_name: string }[];
+  audio: { id: number; audio_url: string; title: string }[];
 }
 
 function fileToBase64(file: File): Promise<string> {
@@ -60,8 +61,12 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
   const [editingDesc, setEditingDesc] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [uploadingAudio, setUploadingAudio] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [kickingId, setKickingId] = useState<number | null>(null);
   const videoRef = useRef<HTMLInputElement>(null);
   const photoRef = useRef<HTMLInputElement>(null);
+  const audioRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -101,6 +106,60 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
       await load();
     } finally {
       setLeaving(false);
+    }
+  };
+
+  const handleDeleteHouse = async () => {
+    if (!confirm('Удалить дом безвозвратно? Это действие нельзя отменить.')) return;
+    setDeleting(true);
+    try {
+      await housesApi.deleteHouse(houseId);
+      if (isOwner) updateUser({ house_id: null, house_name: '' });
+      onBack();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Ошибка удаления');
+      setDeleting(false);
+    }
+  };
+
+  const handleKickMember = async (memberId: number, username: string) => {
+    if (!confirm(`Исключить ${username} из дома?`)) return;
+    setKickingId(memberId);
+    try {
+      await housesApi.kickMember(houseId, memberId);
+      await load();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Ошибка исключения');
+    } finally {
+      setKickingId(null);
+    }
+  };
+
+  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('audio/')) { alert('Выберите аудио файл'); return; }
+    if (file.size > 25 * 1024 * 1024) { alert('Аудио должно быть не более 25 МБ'); return; }
+    setUploadingAudio(true);
+    try {
+      const base64 = await fileToBase64(file);
+      await housesApi.uploadAudio(houseId, { audio_file: base64, audio_content_type: file.type, title: file.name });
+      await load();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Ошибка загрузки');
+    } finally {
+      setUploadingAudio(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleDeleteAudio = async (audioId: number) => {
+    if (!confirm('Удалить аудиофайл?')) return;
+    try {
+      await housesApi.deleteAudio(audioId);
+      await load();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Ошибка удаления');
     }
   };
 
@@ -193,7 +252,7 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
                     </span>
                   </div>
                   {house.short_desc && (
-                    <p className="text-sm mt-2" style={{ color: 'hsl(222 8% 64%)', fontFamily: 'Manrope, sans-serif' }}>{house.short_desc}</p>
+                    <p className="text-sm mt-2" style={{ color: 'hsl(222 8% 64%)', fontFamily: 'Manrope, sans-serif', whiteSpace: 'pre-line' }}>{house.short_desc}</p>
                   )}
                 </div>
                 {/* Рейтинг */}
@@ -218,6 +277,13 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
                     className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-50"
                     style={{ background: 'hsl(222 20% 12%)', border: '1px solid hsl(222 14% 22%)', color: 'hsl(222 8% 58%)', fontFamily: 'Manrope, sans-serif' }}>
                     {leaving ? 'Покидаю...' : <><Icon name="LogOut" size={14} /> Покинуть</>}
+                  </button>
+                )}
+                {canManage && (
+                  <button onClick={handleDeleteHouse} disabled={deleting}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-50"
+                    style={{ background: 'hsl(355 62% 30% / 0.15)', border: '1px solid hsl(355 62% 44% / 0.35)', color: 'hsl(355 72% 68%)', fontFamily: 'Manrope, sans-serif' }}>
+                    {deleting ? 'Удаляю...' : <><Icon name="Trash2" size={14} /> Удалить дом</>}
                   </button>
                 )}
                 <div className="flex items-center gap-1.5 text-xs" style={{ color: 'hsl(222 8% 52%)', fontFamily: 'Manrope, sans-serif' }}>
@@ -322,6 +388,46 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
         </div>
       )}
 
+      {/* Аудио */}
+      <div className="rounded-2xl p-5 mb-5" style={{ background: 'hsl(222 18% 9%)', border: '1px solid hsl(222 14% 18%)' }}>
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'hsl(42 50% 54%)', fontFamily: 'Manrope, sans-serif' }}>Аудио</span>
+          {canManage && (
+            <>
+              <input ref={audioRef} type="file" accept="audio/*" className="hidden" onChange={handleAudioUpload} />
+              <button onClick={() => audioRef.current?.click()} disabled={uploadingAudio}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50">
+                <Icon name={uploadingAudio ? 'Loader' : 'Music'} size={11} className={uploadingAudio ? 'animate-spin' : ''} />
+                {uploadingAudio ? 'Загрузка...' : 'Добавить аудио (до 25 МБ)'}
+              </button>
+            </>
+          )}
+        </div>
+        {house.audio.length > 0 ? (
+          <div className="space-y-2">
+            {house.audio.map(a => (
+              <div key={a.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'hsl(222 20% 11%)', border: '1px solid hsl(222 14% 18%)' }}>
+                <div className="flex-1 min-w-0">
+                  {a.title && (
+                    <div className="text-xs truncate mb-1" style={{ color: 'hsl(222 8% 60%)', fontFamily: 'Manrope, sans-serif' }}>{a.title}</div>
+                  )}
+                  <audio src={a.audio_url} controls className="w-full h-9" />
+                </div>
+                {canManage && (
+                  <button onClick={() => handleDeleteAudio(a.id)} className="flex-shrink-0 p-1.5 rounded-lg hover:bg-white/5 transition-colors">
+                    <Icon name="Trash2" size={14} style={{ color: 'hsl(355 62% 58%)' }} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm" style={{ color: 'hsl(222 8% 40%)', fontFamily: 'Manrope, sans-serif' }}>
+            {canManage ? 'Загрузите аудио вашего дома (до 25 МБ)' : 'Аудио не добавлено'}
+          </p>
+        )}
+      </div>
+
       {/* Участники */}
       <div className="rounded-2xl p-5" style={{ background: 'hsl(222 18% 9%)', border: '1px solid hsl(222 14% 18%)' }}>
         <div className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: 'hsl(42 50% 54%)', fontFamily: 'Manrope, sans-serif' }}>
@@ -332,19 +438,28 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {house.members.map(m => (
-              <button key={m.id} onClick={() => onOpenProfile?.(m.id)}
-                className="flex items-center gap-3 p-3 rounded-xl text-left transition-all"
+              <div key={m.id}
+                className="flex items-center gap-3 p-3 rounded-xl transition-all"
                 style={{ background: 'hsl(222 20% 11%)', border: '1px solid hsl(222 14% 18%)' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'hsl(42 76% 50% / 0.25)'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'hsl(222 14% 18%)'; }}>
-                <UserAvatar username={m.username} avatarUrl={m.avatar_url} size={36} />
-                <div className="min-w-0">
-                  <div className="text-sm font-medium truncate" style={{ color: 'hsl(38 18% 88%)', fontFamily: 'Manrope, sans-serif' }}>
-                    {m.username}
-                    {m.id === house.owner_id && <span className="ml-1 text-[10px]" style={{ color: 'hsl(42 76% 62%)' }}>👑</span>}
+                onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'hsl(42 76% 50% / 0.25)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'hsl(222 14% 18%)'; }}>
+                <button onClick={() => onOpenProfile?.(m.id)} className="flex items-center gap-3 flex-1 min-w-0 text-left">
+                  <UserAvatar username={m.username} avatarUrl={m.avatar_url} size={36} />
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium truncate" style={{ color: 'hsl(38 18% 88%)', fontFamily: 'Manrope, sans-serif' }}>
+                      {m.username}
+                      {m.id === house.owner_id && <span className="ml-1 text-[10px]" style={{ color: 'hsl(42 76% 62%)' }}>👑</span>}
+                    </div>
                   </div>
-                </div>
-              </button>
+                </button>
+                {canManage && m.id !== house.owner_id && (
+                  <button onClick={() => handleKickMember(m.id, m.username)} disabled={kickingId === m.id}
+                    className="flex-shrink-0 p-1.5 rounded-lg hover:bg-white/5 transition-colors disabled:opacity-50"
+                    title="Исключить из дома">
+                    <Icon name={kickingId === m.id ? 'Loader' : 'UserX'} size={14} className={kickingId === m.id ? 'animate-spin' : ''} style={{ color: 'hsl(355 62% 58%)' }} />
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         )}

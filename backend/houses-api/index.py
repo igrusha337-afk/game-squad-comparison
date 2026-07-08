@@ -1,11 +1,15 @@
 """
 Houses API: управление домами CB.
 GET  /                   — список домов, отсортированных по rating_points DESC
-GET  /?action=house&id=N — детали дома (фото галерея + members)
+GET  /?action=house&id=N — детали дома (фото галерея + members + audio)
 POST action=create_house — создать дом
 POST action=update_house — обновить дом (owner или admin)
 POST action=join_house   — вступить в дом
 POST action=leave_house  — покинуть дом
+POST action=kick_member  — исключить участника (owner или admin)
+POST action=delete_house — удалить дом (owner или admin)
+POST action=upload_audio — загрузить аудио дома, до 25 МБ (owner или admin)
+POST action=delete_audio — удалить аудио дома (owner или admin)
 POST action=award_points — начислить баллы (только из других функций)
 """
 import json, os, base64, uuid
@@ -34,8 +38,19 @@ ALLOWED_VIDEO_TYPES = {
     'video/ogg': 'ogv',
     'video/quicktime': 'mov',
 }
+ALLOWED_AUDIO_TYPES = {
+    'audio/mpeg': 'mp3',
+    'audio/mp3': 'mp3',
+    'audio/wav': 'wav',
+    'audio/x-wav': 'wav',
+    'audio/ogg': 'ogg',
+    'audio/webm': 'weba',
+    'audio/mp4': 'm4a',
+    'audio/x-m4a': 'm4a',
+}
 MAX_IMAGE_SIZE = 5 * 1024 * 1024    # 5 MB
 MAX_VIDEO_SIZE = 100 * 1024 * 1024  # 100 MB
+MAX_AUDIO_SIZE = 25 * 1024 * 1024   # 25 MB
 
 
 # ─── helpers ────────────────────────────────────────────────────────────────
@@ -219,6 +234,13 @@ def handle_house_detail(house_id, conn):
             {'id': r[0], 'username': r[1], 'avatar_url': r[2], 'house_name': r[3] or ''}
             for r in cur.fetchall()
         ]
+
+        # Аудио
+        cur.execute(
+            f"SELECT id, audio_url, title FROM {SCHEMA}.house_audio WHERE house_id = %s ORDER BY id ASC",
+            (house_id,)
+        )
+        house['audio'] = [{'id': r[0], 'audio_url': r[1], 'title': r[2]} for r in cur.fetchall()]
 
     conn.close()
     return ok({'house': house})
@@ -446,6 +468,181 @@ def handle_leave_house(user, conn):
     return ok({'ok': True})
 
 
+def handle_kick_member(body, user, conn):
+    """POST action=kick_member — исключить участника из дома (owner или admin)."""
+    house_id = body.get('house_id')
+    member_id = body.get('member_id')
+    if not house_id or not member_id:
+        conn.close()
+        return err('house_id и member_id обязательны')
+
+    try:
+        house_id = int(house_id)
+        member_id = int(member_id)
+    except (TypeError, ValueError):
+        conn.close()
+        return err('Некорректные значения')
+
+    with conn.cursor() as cur:
+        cur.execute(f"SELECT owner_id FROM {SCHEMA}.houses WHERE id = %s", (house_id,))
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return err('Дом не найден', 404)
+        owner_id = row[0]
+        if owner_id != user['id'] and not user['is_admin']:
+            conn.close()
+            return err('Нет прав для исключения участников', 403)
+        if member_id == owner_id:
+            conn.close()
+            return err('Нельзя исключить основателя дома')
+
+        cur.execute(
+            f"UPDATE {SCHEMA}.activity_points SET points = 0 WHERE user_id = %s AND action_type = 'join_house'",
+            (member_id,)
+        )
+        cur.execute(
+            f"UPDATE {SCHEMA}.users SET house_id = NULL, house_name = '' WHERE id = %s AND house_id = %s",
+            (member_id, house_id)
+        )
+
+    refresh_rating_points(conn)
+    conn.commit()
+    conn.close()
+    return ok({'ok': True})
+
+
+def handle_delete_house(body, user, conn):
+    """POST action=delete_house — удалить дом (owner или admin)."""
+    house_id = body.get('house_id')
+    if not house_id:
+        conn.close()
+        return err('house_id обязателен')
+
+    try:
+        house_id = int(house_id)
+    except (TypeError, ValueError):
+        conn.close()
+        return err('Некорректный house_id')
+
+    with conn.cursor() as cur:
+        cur.execute(f"SELECT owner_id FROM {SCHEMA}.houses WHERE id = %s", (house_id,))
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return err('Дом не найден', 404)
+        if row[0] != user['id'] and not user['is_admin']:
+            conn.close()
+            return err('Нет прав для удаления дома', 403)
+
+        cur.execute(
+            f"UPDATE {SCHEMA}.activity_points SET points = 0 "
+            f"WHERE action_type = 'join_house' AND user_id IN "
+            f"(SELECT id FROM {SCHEMA}.users WHERE house_id = %s)",
+            (house_id,)
+        )
+        cur.execute(
+            f"UPDATE {SCHEMA}.users SET house_id = NULL, house_name = '' WHERE house_id = %s",
+            (house_id,)
+        )
+        cur.execute(f"DELETE FROM {SCHEMA}.house_audio WHERE house_id = %s", (house_id,))
+        cur.execute(f"DELETE FROM {SCHEMA}.house_photos WHERE house_id = %s", (house_id,))
+        cur.execute(f"DELETE FROM {SCHEMA}.houses WHERE id = %s", (house_id,))
+
+    conn.commit()
+    conn.close()
+    return ok({'ok': True})
+
+
+def handle_upload_audio(body, user, conn):
+    """POST action=upload_audio — загрузить аудио дома, до 25 МБ (owner или admin)."""
+    house_id = body.get('house_id')
+    if not house_id:
+        conn.close()
+        return err('house_id обязателен')
+    if not body.get('audio_file'):
+        conn.close()
+        return err('audio_file обязателен')
+
+    try:
+        house_id = int(house_id)
+    except (TypeError, ValueError):
+        conn.close()
+        return err('Некорректный house_id')
+
+    with conn.cursor() as cur:
+        cur.execute(f"SELECT owner_id FROM {SCHEMA}.houses WHERE id = %s", (house_id,))
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return err('Дом не найден', 404)
+        if row[0] != user['id'] and not user['is_admin']:
+            conn.close()
+            return err('Нет прав для загрузки аудио', 403)
+
+    try:
+        audio_url = upload_file(
+            body['audio_file'],
+            body.get('audio_content_type', 'audio/mpeg'),
+            'house-audio',
+            ALLOWED_AUDIO_TYPES,
+            MAX_AUDIO_SIZE,
+        )
+    except ValueError as e:
+        conn.close()
+        return err(str(e))
+
+    title = (body.get('title') or '').strip()[:150]
+
+    with conn.cursor() as cur:
+        cur.execute(
+            f"INSERT INTO {SCHEMA}.house_audio (house_id, audio_url, title) VALUES (%s, %s, %s) RETURNING id",
+            (house_id, audio_url, title)
+        )
+        audio_id = cur.fetchone()[0]
+
+    conn.commit()
+    conn.close()
+    return ok({'ok': True, 'audio': {'id': audio_id, 'audio_url': audio_url, 'title': title}})
+
+
+def handle_delete_audio(body, user, conn):
+    """POST action=delete_audio — удалить аудио дома (owner или admin)."""
+    audio_id = body.get('audio_id')
+    if not audio_id:
+        conn.close()
+        return err('audio_id обязателен')
+
+    try:
+        audio_id = int(audio_id)
+    except (TypeError, ValueError):
+        conn.close()
+        return err('Некорректный audio_id')
+
+    with conn.cursor() as cur:
+        cur.execute(
+            f"""
+            SELECT h.owner_id FROM {SCHEMA}.house_audio a
+            JOIN {SCHEMA}.houses h ON h.id = a.house_id
+            WHERE a.id = %s
+            """,
+            (audio_id,)
+        )
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return err('Аудио не найдено', 404)
+        if row[0] != user['id'] and not user['is_admin']:
+            conn.close()
+            return err('Нет прав для удаления аудио', 403)
+
+        cur.execute(f"DELETE FROM {SCHEMA}.house_audio WHERE id = %s", (audio_id,))
+
+    conn.commit()
+    conn.close()
+    return ok({'ok': True})
+
+
 def handle_award_points(body, user, conn):
     """POST action=award_points — начислить баллы (только из других функций)."""
     target_user_id = body.get('user_id')
@@ -549,6 +746,18 @@ def handler(event: dict, context) -> dict:
 
         if action == 'leave_house':
             return handle_leave_house(user, conn)
+
+        if action == 'kick_member':
+            return handle_kick_member(body, user, conn)
+
+        if action == 'delete_house':
+            return handle_delete_house(body, user, conn)
+
+        if action == 'upload_audio':
+            return handle_upload_audio(body, user, conn)
+
+        if action == 'delete_audio':
+            return handle_delete_audio(body, user, conn)
 
         if action == 'award_points':
             return handle_award_points(body, user, conn)

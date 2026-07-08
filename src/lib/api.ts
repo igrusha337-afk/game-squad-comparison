@@ -231,6 +231,14 @@ export const housesApi = {
     request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'join_house', house_id }) }),
   leave: () =>
     request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'leave_house' }) }),
+  kickMember: (house_id: number, member_id: number) =>
+    request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'kick_member', house_id, member_id }) }),
+  deleteHouse: (house_id: number) =>
+    request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'delete_house', house_id }) }),
+  uploadAudio: (house_id: number, data: { audio_file: string; audio_content_type: string; title?: string }) =>
+    request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'upload_audio', house_id, ...data }) }),
+  deleteAudio: (audio_id: number) =>
+    request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'delete_audio', audio_id }) }),
 };
 
 // Treaties
