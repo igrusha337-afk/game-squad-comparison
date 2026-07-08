@@ -13,6 +13,15 @@ const FEATURES: { icon: string; title: string; desc: string }[] = [
   { icon: 'Send', title: 'Соцсети', desc: 'Добавьте ссылки на Telegram, Discord, ВКонтакте, YouTube и Rutube своего дома.' },
 ];
 
+const RATING_RULES: { action: string; points: number }[] = [
+  { action: 'Вступление в дом', points: 5 },
+  { action: 'Публикация ответа на форуме', points: 5 },
+  { action: 'Создание новой темы на форуме', points: 10 },
+  { action: 'Лайк, полученный на тему форума', points: 3 },
+  { action: 'Публикация гайда', points: 15 },
+  { action: 'Лайк, полученный на гайд', points: 5 },
+];
+
 export default function HousesHintModal({ onClose }: Props) {
   return (
     <div
@@ -65,6 +74,29 @@ export default function HousesHintModal({ onClose }: Props) {
               </div>
             </div>
           ))}
+
+          {/* Баллы рейтинга */}
+          <div className="p-3 rounded-xl" style={{ background: 'hsl(42 76% 50% / 0.06)', border: '1px solid hsl(42 76% 50% / 0.25)' }}>
+            <div className="flex items-center gap-2 mb-2.5">
+              <Icon name="Sparkles" size={14} style={{ color: 'hsl(42 76% 62%)' }} />
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'hsl(42 50% 58%)', fontFamily: 'Manrope, sans-serif' }}>
+                Как начисляются баллы рейтинга
+              </span>
+            </div>
+            <div className="space-y-1.5">
+              {RATING_RULES.map(r => (
+                <div key={r.action} className="flex items-center justify-between gap-3 text-xs" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                  <span style={{ color: 'hsl(222 8% 68%)' }}>{r.action}</span>
+                  <span className="flex-shrink-0 font-semibold px-2 py-0.5 rounded-md" style={{ background: 'hsl(42 76% 50% / 0.15)', color: 'hsl(42 76% 68%)' }}>
+                    +{r.points}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] mt-2.5 leading-relaxed" style={{ color: 'hsl(222 8% 46%)', fontFamily: 'Manrope, sans-serif' }}>
+              Баллы каждого участника суммируются в общий рейтинг дома. При выходе участника из дома баллы за вступление снимаются.
+            </p>
+          </div>
         </div>
 
         {/* Футер */}
