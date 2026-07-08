@@ -1,16 +1,18 @@
 """
 Houses API: управление домами CB.
-GET  /                   — список домов, отсортированных по rating_points DESC
-GET  /?action=house&id=N — детали дома (фото галерея + members + audio)
-POST action=create_house — создать дом
-POST action=update_house — обновить дом (owner или admin)
-POST action=join_house   — вступить в дом
-POST action=leave_house  — покинуть дом
-POST action=kick_member  — исключить участника (owner или admin)
-POST action=delete_house — удалить дом (owner или admin)
-POST action=upload_audio — загрузить аудио дома, до 25 МБ (owner или admin)
-POST action=delete_audio — удалить аудио дома (owner или admin)
-POST action=award_points — начислить баллы (только из других функций)
+GET  /                       — список домов, отсортированных по rating_points DESC
+GET  /?action=house&id=N     — детали дома (фото галерея + members + audio + соцсети)
+POST action=create_house     — создать дом
+POST action=update_house     — обновить дом: шапка (name/short_desc/server/emblem), описание,
+                                видео, фото, соцсети (owner или admin)
+POST action=join_house       — вступить в дом
+POST action=leave_house      — покинуть дом
+POST action=kick_member      — исключить участника (owner или admin)
+POST action=delete_house     — удалить дом (owner или admin)
+POST action=transfer_ownership — передать права главы дома другому участнику (owner или admin)
+POST action=upload_audio     — загрузить аудио дома, до 25 МБ (owner или admin)
+POST action=delete_audio     — удалить аудио дома (owner или admin)
+POST action=award_points     — начислить баллы (только из других функций)
 """
 import json, os, base64, uuid
 import psycopg2
@@ -206,12 +208,24 @@ def handle_house_detail(house_id, conn):
 
         # Дополнительные поля
         cur.execute(
-            f"SELECT description, video_url FROM {SCHEMA}.houses WHERE id = %s",
+            f"""
+            SELECT description, video_url,
+                   telegram_url, discord_url, vk_url, youtube_url, rutube_url,
+                   telegram_visible, discord_visible, vk_visible, youtube_visible, rutube_visible
+            FROM {SCHEMA}.houses WHERE id = %s
+            """,
             (house_id,)
         )
         extra = cur.fetchone()
         house['description'] = extra[0] if extra else None
         house['video_url'] = extra[1] if extra else None
+        house['socials'] = {
+            'telegram': {'url': extra[2] or '', 'visible': extra[7]},
+            'discord': {'url': extra[3] or '', 'visible': extra[8]},
+            'vk': {'url': extra[4] or '', 'visible': extra[9]},
+            'youtube': {'url': extra[5] or '', 'visible': extra[10]},
+            'rutube': {'url': extra[6] or '', 'visible': extra[11]},
+        } if extra else {}
 
         # Фото галерея
         cur.execute(
@@ -343,6 +357,65 @@ def handle_update_house(body, user, conn):
                 (body['description'], house_id)
             )
 
+    # Обновить шапку (название, краткое описание, сервер)
+    if 'name' in body:
+        name = (body['name'] or '').strip()
+        if not name:
+            conn.close()
+            return err('Название дома обязательно')
+        with conn.cursor() as cur:
+            cur.execute(f"UPDATE {SCHEMA}.houses SET name = %s WHERE id = %s", (name, house_id))
+            cur.execute(f"UPDATE {SCHEMA}.users SET house_name = %s WHERE house_id = %s", (name, house_id))
+
+    if 'short_desc' in body:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"UPDATE {SCHEMA}.houses SET short_desc = %s WHERE id = %s",
+                ((body['short_desc'] or '').strip(), house_id)
+            )
+
+    if 'server' in body:
+        server = (body['server'] or '').strip()
+        if not server:
+            conn.close()
+            return err('Сервер обязателен')
+        with conn.cursor() as cur:
+            cur.execute(f"UPDATE {SCHEMA}.houses SET server = %s WHERE id = %s", (server, house_id))
+
+    # Загрузка герба
+    if body.get('emblem_file'):
+        try:
+            emblem_url = upload_file(
+                body['emblem_file'],
+                body.get('emblem_content_type', 'image/jpeg'),
+                'house-emblems',
+                ALLOWED_IMAGE_TYPES,
+                MAX_IMAGE_SIZE,
+            )
+            with conn.cursor() as cur:
+                cur.execute(f"UPDATE {SCHEMA}.houses SET emblem_url = %s WHERE id = %s", (emblem_url, house_id))
+        except ValueError as e:
+            conn.close()
+            return err(str(e))
+
+    # Соцсети (ссылки и видимость)
+    SOCIAL_FIELDS = ['telegram', 'discord', 'vk', 'youtube', 'rutube']
+    for social in SOCIAL_FIELDS:
+        url_key = f'{social}_url'
+        if url_key in body:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"UPDATE {SCHEMA}.houses SET {url_key} = %s WHERE id = %s",
+                    ((body[url_key] or '').strip(), house_id)
+                )
+        visible_key = f'{social}_visible'
+        if visible_key in body:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"UPDATE {SCHEMA}.houses SET {visible_key} = %s WHERE id = %s",
+                    (bool(body[visible_key]), house_id)
+                )
+
     # Загрузка видео
     if body.get('video_file'):
         try:
@@ -463,6 +536,53 @@ def handle_leave_house(user, conn):
             (user['id'],)
         )
     refresh_rating_points(conn)
+    conn.commit()
+    conn.close()
+    return ok({'ok': True})
+
+
+def handle_transfer_ownership(body, user, conn):
+    """POST action=transfer_ownership — передать права главы дома другому участнику (owner или admin)."""
+    house_id = body.get('house_id')
+    new_owner_id = body.get('new_owner_id')
+    if not house_id or not new_owner_id:
+        conn.close()
+        return err('house_id и new_owner_id обязательны')
+
+    try:
+        house_id = int(house_id)
+        new_owner_id = int(new_owner_id)
+    except (TypeError, ValueError):
+        conn.close()
+        return err('Некорректные значения')
+
+    with conn.cursor() as cur:
+        cur.execute(f"SELECT owner_id FROM {SCHEMA}.houses WHERE id = %s", (house_id,))
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return err('Дом не найден', 404)
+        owner_id = row[0]
+        if owner_id != user['id'] and not user['is_admin']:
+            conn.close()
+            return err('Нет прав для передачи главенства', 403)
+        if new_owner_id == owner_id:
+            conn.close()
+            return err('Этот пользователь уже глава дома')
+
+        cur.execute(
+            f"SELECT id FROM {SCHEMA}.users WHERE id = %s AND house_id = %s",
+            (new_owner_id, house_id)
+        )
+        if not cur.fetchone():
+            conn.close()
+            return err('Пользователь должен быть участником дома')
+
+        cur.execute(
+            f"UPDATE {SCHEMA}.houses SET owner_id = %s WHERE id = %s",
+            (new_owner_id, house_id)
+        )
+
     conn.commit()
     conn.close()
     return ok({'ok': True})
@@ -749,6 +869,9 @@ def handler(event: dict, context) -> dict:
 
         if action == 'kick_member':
             return handle_kick_member(body, user, conn)
+
+        if action == 'transfer_ownership':
+            return handle_transfer_ownership(body, user, conn)
 
         if action == 'delete_house':
             return handle_delete_house(body, user, conn)

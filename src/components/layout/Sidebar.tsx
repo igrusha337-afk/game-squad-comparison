@@ -10,7 +10,7 @@ const NAV_ITEMS: Array<{ id: Page; label: string; icon: string; adminOnly?: bool
   { id: 'houses',   label: 'Дома CB',    icon: 'Shield' },
   { id: 'forum',    label: 'Форум',      icon: 'MessageSquare' },
   { id: 'guides',   label: 'Гайды',      icon: 'BookOpen' },
-  { id: 'game',     label: 'Неадекватная игра', icon: 'Gamepad2' },
+  { id: 'game',     label: 'Неадекватная игра', icon: 'Gamepad2', adminOnly: true },
   { id: 'about',    label: 'О проекте',  icon: 'Info' },
   { id: 'admin',    label: 'Управление', icon: 'Settings', adminOnly: true },
 ];

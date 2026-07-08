@@ -11,6 +11,11 @@ const SERVERS = [
   'EU7 Ferrea Corona', 'EU8 Iron Dawn',
 ];
 
+interface SocialLink {
+  url: string;
+  visible: boolean;
+}
+
 interface HouseDetail {
   id: number;
   name: string;
@@ -27,7 +32,16 @@ interface HouseDetail {
   photos: { id: number; photo_url: string }[];
   members: { id: number; username: string; avatar_url: string; house_name: string }[];
   audio: { id: number; audio_url: string; title: string }[];
+  socials: Record<'telegram' | 'discord' | 'vk' | 'youtube' | 'rutube', SocialLink>;
 }
+
+const SOCIAL_META: { key: 'telegram' | 'discord' | 'vk' | 'youtube' | 'rutube'; label: string; icon: string; color: string }[] = [
+  { key: 'telegram', label: 'Telegram', icon: 'Send', color: 'hsl(200 85% 55%)' },
+  { key: 'discord', label: 'Discord', icon: 'MessageCircle', color: 'hsl(235 85% 65%)' },
+  { key: 'vk', label: 'ВКонтакте', icon: 'Share2', color: 'hsl(210 78% 58%)' },
+  { key: 'youtube', label: 'YouTube', icon: 'Youtube', color: 'hsl(0 72% 55%)' },
+  { key: 'rutube', label: 'Rutube', icon: 'Video', color: 'hsl(20 85% 55%)' },
+];
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -64,9 +78,21 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
   const [uploadingAudio, setUploadingAudio] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [kickingId, setKickingId] = useState<number | null>(null);
+  const [editingHeader, setEditingHeader] = useState(false);
+  const [headerName, setHeaderName] = useState('');
+  const [headerShortDesc, setHeaderShortDesc] = useState('');
+  const [headerServer, setHeaderServer] = useState('');
+  const [headerEmblem, setHeaderEmblem] = useState<{ data: string; type: string } | null>(null);
+  const [savingHeader, setSavingHeader] = useState(false);
+  const [transferring, setTransferring] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [editingSocials, setEditingSocials] = useState(false);
+  const [socialsForm, setSocialsForm] = useState<Record<string, { url: string; visible: boolean }>>({});
+  const [savingSocials, setSavingSocials] = useState(false);
   const videoRef = useRef<HTMLInputElement>(null);
   const photoRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLInputElement>(null);
+  const headerEmblemRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -74,6 +100,16 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
       const d = await housesApi.getHouse(houseId);
       setHouse(d.house);
       setDesc(d.house.description || '');
+      setHeaderName(d.house.name || '');
+      setHeaderShortDesc(d.house.short_desc || '');
+      setHeaderServer(d.house.server || '');
+      if (d.house.socials) {
+        const s: Record<string, { url: string; visible: boolean }> = {};
+        for (const key of Object.keys(d.house.socials)) {
+          s[key] = { url: d.house.socials[key].url, visible: d.house.socials[key].visible };
+        }
+        setSocialsForm(s);
+      }
     } finally {
       setLoading(false);
     }
@@ -94,6 +130,69 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
       await load();
     } finally {
       setJoining(false);
+    }
+  };
+
+  const handleHeaderEmblemChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const base64 = await fileToBase64(file);
+    setHeaderEmblem({ data: base64, type: file.type });
+  };
+
+  const handleSaveHeader = async () => {
+    if (!headerName.trim()) { alert('Укажите название дома'); return; }
+    if (!headerServer.trim()) { alert('Укажите сервер'); return; }
+    setSavingHeader(true);
+    try {
+      const payload: Parameters<typeof housesApi.update>[1] = {
+        name: headerName.trim(),
+        short_desc: headerShortDesc.trim(),
+        server: headerServer.trim(),
+      };
+      if (headerEmblem) { payload.emblem_file = headerEmblem.data; payload.emblem_content_type = headerEmblem.type; }
+      await housesApi.update(houseId, payload);
+      if (isOwner) updateUser({ house_name: headerName.trim() });
+      setEditingHeader(false);
+      setHeaderEmblem(null);
+      await load();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Ошибка сохранения');
+    } finally {
+      setSavingHeader(false);
+    }
+  };
+
+  const handleTransferOwnership = async (memberId: number, username: string) => {
+    if (!confirm(`Передать права главы дома участнику ${username}? Вы станете обычным участником.`)) return;
+    setTransferring(true);
+    try {
+      await housesApi.transferOwnership(houseId, memberId);
+      if (isOwner) updateUser({});
+      setShowTransfer(false);
+      await load();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Ошибка передачи прав');
+    } finally {
+      setTransferring(false);
+    }
+  };
+
+  const handleSaveSocials = async () => {
+    setSavingSocials(true);
+    try {
+      const payload: Record<string, string | boolean> = {};
+      for (const key of Object.keys(socialsForm)) {
+        payload[`${key}_url`] = socialsForm[key].url.trim();
+        payload[`${key}_visible`] = socialsForm[key].visible;
+      }
+      await housesApi.update(houseId, payload);
+      setEditingSocials(false);
+      await load();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Ошибка сохранения');
+    } finally {
+      setSavingSocials(false);
     }
   };
 
@@ -227,6 +326,60 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
       {/* Шапка дома */}
       <div className="rounded-2xl overflow-hidden mb-5" style={{ background: 'hsl(222 18% 9%)', border: '1px solid hsl(42 76% 50% / 0.2)' }}>
         <div className="p-6">
+          {editingHeader ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 flex items-center justify-center"
+                  style={{ background: 'hsl(222 20% 14%)', border: '2px dashed hsl(42 76% 50% / 0.3)' }}>
+                  {headerEmblem
+                    ? <img src={headerEmblem.data} alt="" className="w-full h-full object-cover" />
+                    : house.emblem_url
+                      ? <img src={house.emblem_url} alt="" className="w-full h-full object-cover" />
+                      : <Icon name="Shield" size={28} style={{ color: 'hsl(42 76% 50% / 0.4)' }} />}
+                </div>
+                <div>
+                  <input ref={headerEmblemRef} type="file" accept="image/*" className="hidden" onChange={handleHeaderEmblemChange} />
+                  <button type="button" onClick={() => headerEmblemRef.current?.click()}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold mb-1"
+                    style={{ background: 'hsl(222 20% 14%)', border: '1px solid hsl(222 14% 22%)', color: 'hsl(42 50% 58%)', fontFamily: 'Manrope, sans-serif' }}>
+                    <Icon name="Upload" size={12} /> Заменить герб
+                  </button>
+                  <p className="text-[11px]" style={{ color: 'hsl(222 8% 44%)', fontFamily: 'Manrope, sans-serif' }}>JPG, PNG, WebP · до 5 МБ</p>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(42 50% 54%)', fontFamily: 'Manrope, sans-serif' }}>Название дома</label>
+                <input type="text" value={headerName} onChange={e => setHeaderName(e.target.value)} maxLength={100}
+                  className="w-full rounded-xl px-4 py-2.5 text-sm outline-none"
+                  style={{ background: 'hsl(222 20% 12%)', border: '1px solid hsl(222 14% 22%)', color: 'hsl(38 18% 90%)', fontFamily: 'Manrope, sans-serif' }} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(42 50% 54%)', fontFamily: 'Manrope, sans-serif' }}>Краткое описание</label>
+                <textarea value={headerShortDesc} onChange={e => setHeaderShortDesc(e.target.value)} maxLength={200} rows={3}
+                  className="w-full rounded-xl px-4 py-2.5 text-sm outline-none resize-none"
+                  style={{ background: 'hsl(222 20% 12%)', border: '1px solid hsl(222 14% 22%)', color: 'hsl(38 18% 90%)', fontFamily: 'Manrope, sans-serif' }} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(42 50% 54%)', fontFamily: 'Manrope, sans-serif' }}>Сервер</label>
+                <select value={headerServer} onChange={e => setHeaderServer(e.target.value)}
+                  className="w-full rounded-xl px-4 py-2.5 text-sm outline-none"
+                  style={{ background: 'hsl(222 20% 12%)', border: '1px solid hsl(222 14% 22%)', color: 'hsl(38 18% 90%)', fontFamily: 'Manrope, sans-serif' }}>
+                  {SERVERS.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button onClick={() => { setEditingHeader(false); setHeaderEmblem(null); setHeaderName(house.name); setHeaderShortDesc(house.short_desc); setHeaderServer(house.server); }}
+                  className="px-4 py-2 rounded-xl text-sm" style={{ border: '1px solid hsl(222 14% 22%)', color: 'hsl(222 8% 58%)', fontFamily: 'Manrope, sans-serif' }}>
+                  Отмена
+                </button>
+                <button onClick={handleSaveHeader} disabled={savingHeader}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-50"
+                  style={{ background: 'hsl(42 76% 50% / 0.2)', border: '1px solid hsl(42 76% 50% / 0.4)', color: 'hsl(42 76% 68%)', fontFamily: 'Manrope, sans-serif' }}>
+                  {savingHeader ? 'Сохраняю...' : 'Сохранить'}
+                </button>
+              </div>
+            </div>
+          ) : (
           <div className="flex items-start gap-5">
             {/* Герб */}
             <div className="w-20 h-20 rounded-2xl flex-shrink-0 overflow-hidden flex items-center justify-center"
@@ -238,9 +391,17 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h1 style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: '2rem', fontWeight: 700, color: 'hsl(38 24% 94%)', lineHeight: 1.1 }}>
-                    {house.name}
-                  </h1>
+                  <div className="flex items-center gap-2">
+                    <h1 style={{ fontFamily: '"Cormorant Garamond", serif', fontSize: '2rem', fontWeight: 700, color: 'hsl(38 24% 94%)', lineHeight: 1.1 }}>
+                      {house.name}
+                    </h1>
+                    {canManage && (
+                      <button onClick={() => setEditingHeader(true)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+                        title="Редактировать шапку">
+                        <Icon name="Pencil" size={13} />
+                      </button>
+                    )}
+                  </div>
                   <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                     {house.server && (
                       <span className="text-xs px-2 py-0.5 rounded-md" style={{ background: 'hsl(210 78% 50% / 0.15)', color: 'hsl(210 78% 68%)', border: '1px solid hsl(210 78% 50% / 0.2)', fontFamily: 'Manrope, sans-serif' }}>
@@ -279,6 +440,13 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
                     {leaving ? 'Покидаю...' : <><Icon name="LogOut" size={14} /> Покинуть</>}
                   </button>
                 )}
+                {canManage && house.member_count > 1 && (
+                  <button onClick={() => setShowTransfer(v => !v)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold"
+                    style={{ background: 'hsl(42 76% 50% / 0.1)', border: '1px solid hsl(42 76% 50% / 0.3)', color: 'hsl(42 70% 62%)', fontFamily: 'Manrope, sans-serif' }}>
+                    <Icon name="Crown" size={14} /> Передать главенство
+                  </button>
+                )}
                 {canManage && (
                   <button onClick={handleDeleteHouse} disabled={deleting}
                     className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-50"
@@ -290,8 +458,26 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
                   <Icon name="Users" size={13} /> {house.member_count} участников
                 </div>
               </div>
+              {showTransfer && (
+                <div className="mt-3 p-3 rounded-xl" style={{ background: 'hsl(222 20% 11%)', border: '1px solid hsl(222 14% 18%)' }}>
+                  <div className="text-xs font-semibold mb-2" style={{ color: 'hsl(222 8% 60%)', fontFamily: 'Manrope, sans-serif' }}>Выберите нового главу дома:</div>
+                  <div className="flex flex-col gap-1.5">
+                    {house.members.filter(m => m.id !== house.owner_id).length === 0 ? (
+                      <span className="text-xs" style={{ color: 'hsl(222 8% 44%)' }}>Нет других участников</span>
+                    ) : house.members.filter(m => m.id !== house.owner_id).map(m => (
+                      <button key={m.id} onClick={() => handleTransferOwnership(m.id, m.username)} disabled={transferring}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-left disabled:opacity-50 transition-colors"
+                        style={{ background: 'hsl(222 20% 14%)', color: 'hsl(38 18% 88%)', fontFamily: 'Manrope, sans-serif' }}>
+                        <UserAvatar username={m.username} avatarUrl={m.avatar_url} size={22} />
+                        {m.username}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
+          )}
         </div>
       </div>
 
@@ -384,6 +570,65 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
             </div>
           ) : (
             <p className="text-sm" style={{ color: 'hsl(222 8% 40%)', fontFamily: 'Manrope, sans-serif' }}>Добавьте фото вашего дома</p>
+          )}
+        </div>
+      )}
+
+      {/* Соцсети */}
+      {(canManage || SOCIAL_META.some(s => house.socials?.[s.key]?.visible && house.socials?.[s.key]?.url)) && (
+        <div className="rounded-2xl p-5 mb-5" style={{ background: 'hsl(222 18% 9%)', border: '1px solid hsl(222 14% 18%)' }}>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'hsl(42 50% 54%)', fontFamily: 'Manrope, sans-serif' }}>Соцсети</span>
+            {canManage && !editingSocials && (
+              <button onClick={() => setEditingSocials(true)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                <Icon name="Pencil" size={11} /> Редактировать
+              </button>
+            )}
+          </div>
+          {editingSocials ? (
+            <div className="space-y-3">
+              {SOCIAL_META.map(s => (
+                <div key={s.key} className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${s.color.replace(')', ' / 0.15)')}` }}>
+                    <Icon name={s.icon} size={16} style={{ color: s.color }} />
+                  </div>
+                  <input type="url" placeholder={`Ссылка на ${s.label}`}
+                    value={socialsForm[s.key]?.url ?? ''}
+                    onChange={e => setSocialsForm(prev => ({ ...prev, [s.key]: { ...prev[s.key], url: e.target.value, visible: prev[s.key]?.visible ?? true } }))}
+                    className="flex-1 min-w-0 rounded-xl px-3 py-2 text-sm outline-none"
+                    style={{ background: 'hsl(222 20% 12%)', border: '1px solid hsl(222 14% 22%)', color: 'hsl(38 18% 90%)', fontFamily: 'Manrope, sans-serif' }} />
+                  <label className="flex items-center gap-1.5 text-xs flex-shrink-0" style={{ color: 'hsl(222 8% 58%)', fontFamily: 'Manrope, sans-serif' }}>
+                    <input type="checkbox" checked={socialsForm[s.key]?.visible ?? true}
+                      onChange={e => setSocialsForm(prev => ({ ...prev, [s.key]: { ...prev[s.key], url: prev[s.key]?.url ?? '', visible: e.target.checked } }))} />
+                    Показывать
+                  </label>
+                </div>
+              ))}
+              <div className="flex gap-2 justify-end pt-1">
+                <button onClick={() => setEditingSocials(false)}
+                  className="px-3 py-1.5 rounded-lg text-xs" style={{ border: '1px solid hsl(222 14% 22%)', color: 'hsl(222 8% 58%)', fontFamily: 'Manrope, sans-serif' }}>
+                  Отмена
+                </button>
+                <button onClick={handleSaveSocials} disabled={savingSocials}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
+                  style={{ background: 'hsl(42 76% 50% / 0.2)', border: '1px solid hsl(42 76% 50% / 0.4)', color: 'hsl(42 76% 68%)', fontFamily: 'Manrope, sans-serif' }}>
+                  {savingSocials ? 'Сохраняю...' : 'Сохранить'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {SOCIAL_META.filter(s => house.socials?.[s.key]?.visible && house.socials?.[s.key]?.url).map(s => (
+                <a key={s.key} href={house.socials[s.key].url} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all"
+                  style={{ background: `${s.color.replace(')', ' / 0.12)')}`, border: `1px solid ${s.color.replace(')', ' / 0.3)')}`, color: s.color, fontFamily: 'Manrope, sans-serif' }}>
+                  <Icon name={s.icon} size={15} /> {s.label}
+                </a>
+              ))}
+              {SOCIAL_META.every(s => !(house.socials?.[s.key]?.visible && house.socials?.[s.key]?.url)) && (
+                <p className="text-sm" style={{ color: 'hsl(222 8% 40%)', fontFamily: 'Manrope, sans-serif' }}>Ссылки на соцсети не добавлены</p>
+              )}
+            </div>
           )}
         </div>
       )}

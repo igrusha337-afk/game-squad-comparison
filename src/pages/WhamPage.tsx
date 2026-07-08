@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { gameApi } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import Icon from '@/components/ui/icon';
 import { PIXEL_CSS, HitSplash, ComboFloat } from './wham/WhamSprites';
 import type { HoleState } from './wham/WhamSprites';
 import WhamBoard from './wham/WhamBoard';
@@ -20,6 +21,23 @@ interface Hole {
 }
 
 export default function WhamPage() {
+  const { user } = useAuth();
+
+  if (!user?.is_admin) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh]">
+        <div className="text-center space-y-3">
+          <Icon name="ShieldOff" size={32} className="text-muted-foreground mx-auto" />
+          <p className="text-sm text-muted-foreground">Доступ только для администраторов</p>
+        </div>
+      </div>
+    );
+  }
+
+  return <WhamPageInner />;
+}
+
+function WhamPageInner() {
   const { user } = useAuth();
   const [holes, setHoles] = useState<Hole[]>(
     Array.from({ length: HOLES }, (_, i) => ({ id: i, state: 'empty', timer: null }))
