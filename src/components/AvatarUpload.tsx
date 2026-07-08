@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { uploadApi } from '@/lib/api';
 import Icon from '@/components/ui/icon';
+import { resizeImageToBase64 } from '@/lib/imageResize';
 
 interface AvatarUploadProps {
   value: string;
@@ -20,16 +21,12 @@ export default function AvatarUpload({ value, onChange, aspectRatio = '1/1', lab
       setError('Только изображения (jpg, png, webp)');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Максимальный размер — 5 МБ');
-      return;
-    }
 
     setLoading(true);
     setError('');
     try {
-      const base64 = await toBase64(file);
-      const res = await uploadApi.upload(base64, file.type, folder);
+      const { data, type } = await resizeImageToBase64(file);
+      const res = await uploadApi.upload(data, type, folder);
       onChange(res.url);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Ошибка загрузки');
@@ -107,13 +104,4 @@ export default function AvatarUpload({ value, onChange, aspectRatio = '1/1', lab
       <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={onInputChange} />
     </div>
   );
-}
-
-function toBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 }

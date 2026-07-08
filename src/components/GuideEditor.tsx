@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { GuideBlock } from '@/data/types';
 import { uploadApi } from '@/lib/api';
 import Icon from '@/components/ui/icon';
+import { resizeImageToBase64 } from '@/lib/imageResize';
 
 interface GuideEditorProps {
   label: string;
@@ -18,11 +19,10 @@ export default function GuideEditor({ label, value, onChange }: GuideEditorProps
 
   const addImage = async (file: File) => {
     if (!file.type.startsWith('image/')) { setUploadErr('Только изображения'); return; }
-    if (file.size > 5 * 1024 * 1024) { setUploadErr('Максимум 5 МБ'); return; }
     setUploading(true); setUploadErr('');
     try {
-      const b64 = await toBase64(file);
-      const res = await uploadApi.upload(b64, file.type, 'guides');
+      const { data, type } = await resizeImageToBase64(file);
+      const res = await uploadApi.upload(data, type, 'guides');
       onChange([...value, { type: 'image', content: res.url }]);
     } catch (e: unknown) {
       setUploadErr(e instanceof Error ? e.message : 'Ошибка загрузки');
@@ -116,13 +116,4 @@ export default function GuideEditor({ label, value, onChange }: GuideEditorProps
         onChange={e => { const f = e.target.files?.[0]; if (f) addImage(f); e.target.value = ''; }} />
     </div>
   );
-}
-
-function toBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result as string);
-    r.onerror = reject;
-    r.readAsDataURL(file);
-  });
 }

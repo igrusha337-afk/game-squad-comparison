@@ -5,6 +5,7 @@ import { cacheGet, cacheSet, cacheInvalidate } from '@/lib/cache';
 import RichEditor from '@/components/RichEditor';
 import UserAvatar from '@/components/UserAvatar';
 import Icon from '@/components/ui/icon';
+import { resizeImageToBase64 } from '@/lib/imageResize';
 
 interface Guide {
   id: number;
@@ -18,15 +19,6 @@ interface Guide {
   dislikes: number;
   user_vote: number | null;
   created_at: string;
-}
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 }
 
 function timeAgo(iso: string) {
@@ -75,9 +67,16 @@ export default function GuidesPage({ onOpenGuide, onOpenProfile }: Props) {
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const base64 = await fileToBase64(file);
-    setAvatarPreview(base64);
-    setAvatarFile({ data: base64, type: file.type });
+    if (!file.type.startsWith('image/')) { setError('Выберите файл изображения'); e.target.value = ''; return; }
+    try {
+      const { data, type } = await resizeImageToBase64(file);
+      setAvatarPreview(data);
+      setAvatarFile({ data, type });
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Не удалось обработать изображение');
+    } finally {
+      e.target.value = '';
+    }
   };
 
   const handleCreate = async (e: React.FormEvent) => {

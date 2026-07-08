@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { uploadApi } from '@/lib/api';
 import Icon from '@/components/ui/icon';
+import { resizeImageToBase64 } from '@/lib/imageResize';
 
 const EMOJI_LIST = [
   '😀','😁','😂','🤣','😊','😍','🥰','😎','🤔','😮',
@@ -75,22 +76,17 @@ export default function RichEditor({ value, onChange, placeholder = 'Введи�
     if (!file.type.startsWith('image/')) return;
     setUploading(true);
     try {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        try {
-          const res = await uploadApi.upload(reader.result as string, file.type, 'forum');
-          editorRef.current?.focus();
-          restoreSelection();
-          document.execCommand('insertHTML', false,
-            `<img src="${res.url}" alt="image" style="max-width:100%;border-radius:4px;margin:4px 0;" />`
-          );
-          notifyChange();
-        } finally {
-          setUploading(false);
-        }
-      };
-      reader.readAsDataURL(file);
+      const { data, type } = await resizeImageToBase64(file);
+      const res = await uploadApi.upload(data, type, 'forum');
+      editorRef.current?.focus();
+      restoreSelection();
+      document.execCommand('insertHTML', false,
+        `<img src="${res.url}" alt="image" style="max-width:100%;border-radius:4px;margin:4px 0;" />`
+      );
+      notifyChange();
     } catch {
+      // ignore
+    } finally {
       setUploading(false);
     }
   };
