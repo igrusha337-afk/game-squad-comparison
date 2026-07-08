@@ -261,7 +261,7 @@ export default function HousesPage({ onOpenHouse, onOpenProfile }: Props) {
           <p className="text-sm">Домов пока нет. Основайте первый!</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {houses.map((h, idx) => {
             const m = medal(idx + 1);
             return (
@@ -270,47 +270,47 @@ export default function HousesPage({ onOpenHouse, onOpenProfile }: Props) {
                 style={{ background: 'hsl(222 18% 9%)', border: `1px solid ${idx === 0 ? 'hsl(42 76% 50% / 0.35)' : 'hsl(222 14% 16%)'}` }}
                 onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'hsl(42 76% 50% / 0.3)'; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = idx === 0 ? 'hsl(42 76% 50% / 0.35)' : 'hsl(222 14% 16%)'; }}>
-                <div className="flex items-center gap-3 p-4">
+                <div className="flex items-start gap-4 p-5">
                   {/* Место */}
-                  <div className="w-7 text-center flex-shrink-0">
+                  <div className="w-8 text-center flex-shrink-0 pt-1">
                     {m ? (
-                      <span className="text-lg">{m.icon}</span>
+                      <span className="text-2xl">{m.icon}</span>
                     ) : (
-                      <span className="text-xs font-bold" style={{ color: 'hsl(222 8% 44%)', fontFamily: 'Manrope, sans-serif' }}>#{idx + 1}</span>
+                      <span className="text-sm font-bold" style={{ color: 'hsl(222 8% 44%)', fontFamily: 'Manrope, sans-serif' }}>#{idx + 1}</span>
                     )}
                   </div>
                   {/* Герб */}
-                  <div className="w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center"
-                    style={{ background: 'hsl(222 20% 14%)', border: '1px solid hsl(222 14% 22%)', minWidth: '3rem' }}>
+                  <div className="w-16 h-16 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center"
+                    style={{ background: 'hsl(222 20% 14%)', border: '1px solid hsl(222 14% 22%)', minWidth: '4rem' }}>
                     {h.emblem_url
                       ? <img src={h.emblem_url} alt="" className="w-full h-full object-cover" />
-                      : <Icon name="Shield" size={20} style={{ color: 'hsl(42 76% 50% / 0.4)' }} />}
+                      : <Icon name="Shield" size={26} style={{ color: 'hsl(42 76% 50% / 0.4)' }} />}
                   </div>
                   {/* Инфо */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                      <h3 className="font-bold group-hover:text-primary transition-colors truncate" style={{ color: 'hsl(38 18% 92%)', fontFamily: '"Cormorant Garamond", serif', fontSize: 'clamp(0.9rem, 2.5vw, 1.1rem)' }}>
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <h3 className="font-bold group-hover:text-primary transition-colors truncate" style={{ color: 'hsl(38 18% 92%)', fontFamily: '"Cormorant Garamond", serif', fontSize: 'clamp(1.05rem, 2.8vw, 1.35rem)' }}>
                         {h.name}
                       </h3>
                       {h.server && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-md whitespace-nowrap" style={{ background: 'hsl(210 78% 50% / 0.15)', color: 'hsl(210 78% 68%)', border: '1px solid hsl(210 78% 50% / 0.2)', fontFamily: 'Manrope, sans-serif' }}>
+                        <span className="text-xs px-2 py-0.5 rounded-md whitespace-nowrap" style={{ background: 'hsl(210 78% 50% / 0.15)', color: 'hsl(210 78% 68%)', border: '1px solid hsl(210 78% 50% / 0.2)', fontFamily: 'Manrope, sans-serif' }}>
                           {h.server}
                         </span>
                       )}
                     </div>
                     {h.short_desc && (
-                      <p className="text-xs leading-relaxed line-clamp-1" style={{ color: 'hsl(222 8% 58%)', fontFamily: 'Manrope, sans-serif' }}>{h.short_desc}</p>
+                      <p className="text-sm leading-relaxed line-clamp-3 mb-1.5" style={{ color: 'hsl(222 8% 58%)', fontFamily: 'Manrope, sans-serif', whiteSpace: 'pre-line' }}>{h.short_desc}</p>
                     )}
-                    <div className="flex items-center gap-2 text-[11px] mt-0.5 flex-wrap" style={{ color: 'hsl(222 8% 46%)' }}>
-                      <button onClick={e => { e.stopPropagation(); onOpenProfile?.(h.owner_id); }} className="hover:text-foreground transition-colors font-medium truncate max-w-[8rem]">
+                    <div className="flex items-center gap-3 text-xs flex-wrap" style={{ color: 'hsl(222 8% 46%)' }}>
+                      <button onClick={e => { e.stopPropagation(); onOpenProfile?.(h.owner_id); }} className="hover:text-foreground transition-colors font-medium truncate max-w-[10rem]">
                         {h.owner}
                       </button>
-                      <span className="flex items-center gap-1 whitespace-nowrap"><Icon name="Users" size={10} /> {h.member_count}</span>
+                      <span className="flex items-center gap-1 whitespace-nowrap"><Icon name="Users" size={12} /> {h.member_count}</span>
                     </div>
                   </div>
                   {/* Рейтинг */}
-                  <div className="flex-shrink-0 text-right ml-1">
-                    <div className="font-bold" style={{ color: 'hsl(42 76% 62%)', fontFamily: '"Cormorant Garamond", serif', fontSize: 'clamp(1rem, 3vw, 1.25rem)' }}>
+                  <div className="flex-shrink-0 text-right ml-1 pt-1">
+                    <div className="font-bold" style={{ color: 'hsl(42 76% 62%)', fontFamily: '"Cormorant Garamond", serif', fontSize: 'clamp(1.15rem, 3.2vw, 1.5rem)' }}>
                       {h.rating_points.toLocaleString('ru')}
                     </div>
                     <div className="text-[10px]" style={{ color: 'hsl(222 8% 46%)', fontFamily: 'Manrope, sans-serif' }}>баллов</div>
