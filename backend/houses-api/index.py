@@ -10,7 +10,7 @@ POST action=leave_house      — покинуть дом
 POST action=kick_member      — исключить участника (owner или admin)
 POST action=delete_house     — удалить дом (owner или admin)
 POST action=transfer_ownership — передать права главы дома другому участнику (owner или admin)
-POST action=upload_video     — загрузить видео дома, до 30 МБ, максимум 10 штук (owner или admin)
+POST action=add_video        — добавить ссылку на видео дома (YouTube/VK/Rutube/Twitch), без лимита (owner или admin)
 POST action=delete_video     — удалить видео дома (owner или admin)
 POST action=delete_photo     — удалить фото дома (owner или admin)
 POST action=upload_audio     — загрузить аудио дома, до 25 МБ (owner или admin)
@@ -21,6 +21,7 @@ POST action=award_trophy     — выдать дому трофей: capital/sec
 POST action=revoke_trophy    — забрать трофей у дома (только admin)
 """
 import json, os, base64, uuid
+from urllib.parse import urlparse
 import psycopg2
 import boto3
 
@@ -40,12 +41,6 @@ ALLOWED_IMAGE_TYPES = {
     'image/webp': 'webp',
     'image/gif': 'gif',
 }
-ALLOWED_VIDEO_TYPES = {
-    'video/mp4': 'mp4',
-    'video/webm': 'webm',
-    'video/ogg': 'ogv',
-    'video/quicktime': 'mov',
-}
 ALLOWED_AUDIO_TYPES = {
     'audio/mpeg': 'mp3',
     'audio/mp3': 'mp3',
@@ -57,9 +52,16 @@ ALLOWED_AUDIO_TYPES = {
     'audio/x-m4a': 'm4a',
 }
 MAX_IMAGE_SIZE = 5 * 1024 * 1024    # 5 MB
-MAX_VIDEO_SIZE = 30 * 1024 * 1024   # 30 MB — большие файлы не проходят через шлюз облачной функции в виде base64
 MAX_AUDIO_SIZE = 25 * 1024 * 1024   # 25 MB
-MAX_VIDEOS_PER_HOUSE = 10
+
+# Разрешённые площадки для видео — воспроизводится через встроенный плеер площадки,
+# файлы не хранятся в нашем облаке и не тратят место
+VIDEO_HOST_WHITELIST = (
+    'youtube.com', 'youtu.be', 'www.youtube.com', 'm.youtube.com',
+    'vk.com', 'vkvideo.ru', 'video.vk.com', 'www.vk.com',
+    'rutube.ru', 'www.rutube.ru',
+    'twitch.tv', 'www.twitch.tv', 'clips.twitch.tv',
+)
 
 SOCIAL_FIELDS = ['telegram', 'discord', 'vk', 'youtube', 'rutube', 'twitch']
 
@@ -152,6 +154,23 @@ def upload_file(file_data, content_type, folder, allowed_types, max_size):
     s3 = get_s3()
     s3.put_object(Bucket='files', Key=filename, Body=file_bytes, ContentType=content_type)
     return cdn_url(filename)
+
+
+def validate_video_url(url):
+    """Проверяет, что ссылка ведёт на разрешённую видео-площадку (YouTube/VK/Rutube/Twitch)."""
+    url = (url or '').strip()
+    if not url:
+        raise ValueError('Укажите ссылку на видео')
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        raise ValueError('Некорректная ссылка')
+    if parsed.scheme not in ('http', 'https') or not parsed.netloc:
+        raise ValueError('Некорректная ссылка')
+    host = parsed.netloc.lower()
+    if host not in VIDEO_HOST_WHITELIST:
+        raise ValueError('Поддерживаются только ссылки на YouTube, VK Видео, Rutube или Twitch')
+    return url
 
 
 # ─── formatting ─────────────────────────────────────────────────────────────
@@ -758,15 +777,12 @@ def handle_delete_house(body, user, conn):
     return ok({'ok': True})
 
 
-def handle_upload_video(body, user, conn):
-    """POST action=upload_video — загрузить видео дома, до 30 МБ, максимум 10 видео (owner или admin)."""
+def handle_add_video(body, user, conn):
+    """POST action=add_video — добавить ссылку на видео дома (YouTube/VK/Rutube/Twitch), без лимита (owner или admin)."""
     house_id = body.get('house_id')
     if not house_id:
         conn.close()
         return err('house_id обязателен')
-    if not body.get('video_file'):
-        conn.close()
-        return err('video_file обязателен')
 
     try:
         house_id = int(house_id)
@@ -782,21 +798,10 @@ def handle_upload_video(body, user, conn):
             return err('Дом не найден', 404)
         if row[0] != user['id'] and not user['is_admin']:
             conn.close()
-            return err('Нет прав для загрузки видео', 403)
-
-        cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.house_videos WHERE house_id = %s", (house_id,))
-        if cur.fetchone()[0] >= MAX_VIDEOS_PER_HOUSE:
-            conn.close()
-            return err(f'Достигнут лимит в {MAX_VIDEOS_PER_HOUSE} видео. Удалите старое видео, чтобы добавить новое.')
+            return err('Нет прав для добавления видео', 403)
 
     try:
-        video_url = upload_file(
-            body['video_file'],
-            body.get('video_content_type', 'video/mp4'),
-            'house-videos',
-            ALLOWED_VIDEO_TYPES,
-            MAX_VIDEO_SIZE,
-        )
+        video_url = validate_video_url(body.get('video_url'))
     except ValueError as e:
         conn.close()
         return err(str(e))
@@ -1258,8 +1263,8 @@ def handler(event: dict, context) -> dict:
         if action == 'delete_house':
             return handle_delete_house(body, user, conn)
 
-        if action == 'upload_video':
-            return handle_upload_video(body, user, conn)
+        if action == 'add_video':
+            return handle_add_video(body, user, conn)
 
         if action == 'delete_video':
             return handle_delete_video(body, user, conn)

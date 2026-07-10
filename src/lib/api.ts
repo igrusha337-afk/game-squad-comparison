@@ -258,8 +258,8 @@ export const housesApi = {
     request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'delete_house', house_id }) }),
   transferOwnership: (house_id: number, new_owner_id: number) =>
     request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'transfer_ownership', house_id, new_owner_id }) }),
-  uploadVideo: (house_id: number, data: { video_file: string; video_content_type: string; title?: string }) =>
-    request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'upload_video', house_id, ...data }) }),
+  addVideo: (house_id: number, data: { video_url: string; title?: string }) =>
+    request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'add_video', house_id, ...data }) }),
   deleteVideo: (video_id: number) =>
     request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'delete_video', video_id }) }),
   deletePhoto: (photo_id: number) =>

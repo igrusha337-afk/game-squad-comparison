@@ -10,6 +10,7 @@ import HouseTrophies, { Trophy } from '@/components/HouseTrophies';
 import { HOUSE_ROLES } from '@/lib/api';
 import { SOCIAL_META } from '@/data/socialMeta';
 import SocialIcon from '@/components/SocialIcon';
+import { getVideoEmbed } from '@/lib/videoEmbed';
 
 const SERVERS = [
   'EU1 Crystal Sea', 'EU2 Pantheon Warhall', 'EU3',
@@ -41,8 +42,6 @@ interface HouseDetail {
   socials: Record<'telegram' | 'discord' | 'vk' | 'youtube' | 'rutube' | 'twitch', SocialLink>;
   trophies: Trophy[];
 }
-
-const MAX_VIDEOS = 10;
 
 const ASSIGNABLE_ROLES = ['diplomat', 'marshal', 'lord', 'knight'] as const;
 
@@ -76,7 +75,9 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
   const [saving, setSaving] = useState(false);
   const [desc, setDesc] = useState('');
   const [editingDesc, setEditingDesc] = useState(false);
-  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [addingVideo, setAddingVideo] = useState(false);
+  const [showVideoForm, setShowVideoForm] = useState(false);
+  const [videoUrlInput, setVideoUrlInput] = useState('');
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [uploadingAudio, setUploadingAudio] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -94,7 +95,6 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
   const [savingSocials, setSavingSocials] = useState(false);
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
   const [changingRoleId, setChangingRoleId] = useState<number | null>(null);
-  const videoRef = useRef<HTMLInputElement>(null);
   const photoRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLInputElement>(null);
   const headerEmblemRef = useRef<HTMLInputElement>(null);
@@ -297,22 +297,23 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
     }
   };
 
-  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith('video/')) { alert('Выберите видео файл'); e.target.value = ''; return; }
-    if (file.size > 30 * 1024 * 1024) { alert('Видео должно быть не более 30 МБ'); e.target.value = ''; return; }
-    if ((house?.videos.length || 0) >= MAX_VIDEOS) { alert(`Достигнут лимит в ${MAX_VIDEOS} видео. Удалите старое, чтобы добавить новое.`); e.target.value = ''; return; }
-    setUploadingVideo(true);
+  const handleAddVideo = async () => {
+    const url = videoUrlInput.trim();
+    if (!url) { alert('Вставьте ссылку на видео'); return; }
+    if (getVideoEmbed(url).type !== 'iframe') {
+      alert('Поддерживаются только ссылки на YouTube, VK Видео, Rutube или Twitch');
+      return;
+    }
+    setAddingVideo(true);
     try {
-      const base64 = await fileToBase64(file);
-      await housesApi.uploadVideo(houseId, { video_file: base64, video_content_type: file.type, title: file.name });
+      await housesApi.addVideo(houseId, { video_url: url });
+      setVideoUrlInput('');
+      setShowVideoForm(false);
       await load();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Ошибка загрузки');
+      alert(err instanceof Error ? err.message : 'Ошибка добавления видео');
     } finally {
-      setUploadingVideo(false);
-      e.target.value = '';
+      setAddingVideo(false);
     }
   };
 
@@ -572,39 +573,70 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
       <div className="rounded-2xl p-5 mb-5" style={{ background: 'hsl(222 18% 9%)', border: '1px solid hsl(222 14% 18%)' }}>
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'hsl(42 50% 54%)', fontFamily: 'Manrope, sans-serif' }}>
-            Видео дома {house.videos.length > 0 && `(${house.videos.length}/${MAX_VIDEOS})`}
+            Видео дома {house.videos.length > 0 && `(${house.videos.length})`}
           </span>
-          {canManage && house.videos.length < MAX_VIDEOS && (
-            <>
-              <input ref={videoRef} type="file" accept="video/*" className="hidden" onChange={handleVideoUpload} />
-              <button onClick={() => videoRef.current?.click()} disabled={uploadingVideo}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50">
-                <Icon name={uploadingVideo ? 'Loader' : 'Upload'} size={11} className={uploadingVideo ? 'animate-spin' : ''} />
-                {uploadingVideo ? 'Загрузка...' : 'Добавить видео'}
-              </button>
-            </>
+          {canManage && !showVideoForm && (
+            <button onClick={() => setShowVideoForm(true)}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+              <Icon name="Plus" size={11} />
+              Добавить видео
+            </button>
           )}
         </div>
+        {showVideoForm && (
+          <div className="flex items-center gap-2 mb-3">
+            <input type="url" autoFocus placeholder="Ссылка на YouTube, VK Видео, Rutube или Twitch"
+              value={videoUrlInput} onChange={e => setVideoUrlInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleAddVideo(); }}
+              className="flex-1 min-w-0 rounded-xl px-3 py-2 text-sm outline-none"
+              style={{ background: 'hsl(222 20% 12%)', border: '1px solid hsl(222 14% 22%)', color: 'hsl(38 18% 90%)', fontFamily: 'Manrope, sans-serif' }} />
+            <button onClick={handleAddVideo} disabled={addingVideo}
+              className="px-3 py-2 rounded-xl text-xs font-semibold disabled:opacity-50 flex-shrink-0"
+              style={{ background: 'hsl(42 76% 50% / 0.2)', border: '1px solid hsl(42 76% 50% / 0.4)', color: 'hsl(42 76% 68%)', fontFamily: 'Manrope, sans-serif' }}>
+              {addingVideo ? 'Добавляю...' : 'Добавить'}
+            </button>
+            <button onClick={() => { setShowVideoForm(false); setVideoUrlInput(''); }}
+              className="p-2 rounded-xl flex-shrink-0" style={{ border: '1px solid hsl(222 14% 22%)', color: 'hsl(222 8% 58%)' }}>
+              <Icon name="X" size={14} />
+            </button>
+          </div>
+        )}
         {house.videos.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {house.videos.map(v => (
-              <div key={v.id} className="relative group">
-                <video src={v.video_url} controls className="w-full rounded-xl" style={{ maxHeight: '220px' }} />
-                {canManage && (
-                  <button onClick={() => handleDeleteVideo(v.id)}
-                    className="absolute top-2 right-2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                    style={{ background: 'hsl(222 30% 6% / 0.85)' }}
-                    title="Удалить видео">
-                    <Icon name="Trash2" size={14} style={{ color: 'hsl(355 62% 58%)' }} />
-                  </button>
-                )}
-              </div>
-            ))}
+            {house.videos.map(v => {
+              const embed = getVideoEmbed(v.video_url);
+              return (
+                <div key={v.id} className="relative group">
+                  {embed.type === 'iframe' ? (
+                    <div className="rounded-xl overflow-hidden" style={{ aspectRatio: '16/9' }}>
+                      <iframe src={embed.embedUrl} className="w-full h-full" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                        allowFullScreen loading="lazy" style={{ border: 'none' }} />
+                    </div>
+                  ) : (
+                    <a href={v.video_url} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-2 p-3 rounded-xl text-sm"
+                      style={{ background: 'hsl(222 20% 12%)', border: '1px solid hsl(222 14% 22%)', color: 'hsl(38 18% 90%)' }}>
+                      <Icon name="ExternalLink" size={14} /> Открыть видео
+                    </a>
+                  )}
+                  {canManage && (
+                    <button onClick={() => handleDeleteVideo(v.id)}
+                      className="absolute top-2 right-2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                      style={{ background: 'hsl(222 30% 6% / 0.85)' }}
+                      title="Удалить видео">
+                      <Icon name="Trash2" size={14} style={{ color: 'hsl(355 62% 58%)' }} />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         ) : (
-          <p className="text-sm" style={{ color: 'hsl(222 8% 40%)', fontFamily: 'Manrope, sans-serif' }}>
-            {canManage ? 'Загрузите видео о вашем доме (до 30 МБ, максимум 10 штук)' : 'Видео не добавлено'}
-          </p>
+          !showVideoForm && (
+            <p className="text-sm" style={{ color: 'hsl(222 8% 40%)', fontFamily: 'Manrope, sans-serif' }}>
+              {canManage ? 'Добавьте ссылку на видео о вашем доме (YouTube, VK Видео, Rutube, Twitch)' : 'Видео не добавлено'}
+            </p>
+          )
         )}
       </div>
 
