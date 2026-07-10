@@ -6,6 +6,8 @@ import { cacheSet } from '@/lib/cache';
 import HousesHintModal from '@/components/HousesHintModal';
 import { resizeImageToBase64 } from '@/lib/imageResize';
 import HouseTrophies, { Trophy } from '@/components/HouseTrophies';
+import { SOCIAL_META } from '@/data/socialMeta';
+import SocialIcon from '@/components/SocialIcon';
 
 const HOUSES_HINT_SEEN_KEY = 'houses-hint-seen';
 
@@ -34,15 +36,6 @@ interface House {
   trophies?: Trophy[];
   socials?: Record<'telegram' | 'discord' | 'vk' | 'youtube' | 'rutube' | 'twitch', SocialShort>;
 }
-
-const SOCIAL_META: { key: 'telegram' | 'discord' | 'vk' | 'youtube' | 'rutube' | 'twitch'; icon: string; color: string }[] = [
-  { key: 'telegram', icon: 'Send', color: 'hsl(200 85% 55%)' },
-  { key: 'discord', icon: 'MessageCircle', color: 'hsl(235 85% 65%)' },
-  { key: 'vk', icon: 'Share2', color: 'hsl(210 78% 58%)' },
-  { key: 'youtube', icon: 'Youtube', color: 'hsl(0 72% 55%)' },
-  { key: 'rutube', icon: 'Video', color: 'hsl(20 85% 55%)' },
-  { key: 'twitch', icon: 'Twitch', color: 'hsl(262 60% 60%)' },
-];
 
 const SORT_OPTIONS: { value: HouseSort; label: string; icon: string }[] = [
   { value: 'points', label: 'По баллам', icon: 'Trophy' },
@@ -343,7 +336,7 @@ export default function HousesPage({ onOpenHouse, onOpenProfile }: Props) {
                         <a key={s.key} href={h.socials![s.key].url} target="_blank" rel="noopener noreferrer"
                           onClick={e => e.stopPropagation()} title={s.key}
                           className="flex items-center transition-opacity hover:opacity-80">
-                          <Icon name={s.icon} size={13} style={{ color: s.color }} />
+                          <SocialIcon meta={s} size={16} />
                         </a>
                       ))}
                     </div>

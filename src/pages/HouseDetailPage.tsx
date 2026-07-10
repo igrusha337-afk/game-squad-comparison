@@ -8,6 +8,8 @@ import { resizeImageToBase64 } from '@/lib/imageResize';
 import ImageLightbox from '@/components/ImageLightbox';
 import HouseTrophies, { Trophy } from '@/components/HouseTrophies';
 import { HOUSE_ROLES } from '@/lib/api';
+import { SOCIAL_META } from '@/data/socialMeta';
+import SocialIcon from '@/components/SocialIcon';
 
 const SERVERS = [
   'EU1 Crystal Sea', 'EU2 Pantheon Warhall', 'EU3',
@@ -39,15 +41,6 @@ interface HouseDetail {
   socials: Record<'telegram' | 'discord' | 'vk' | 'youtube' | 'rutube' | 'twitch', SocialLink>;
   trophies: Trophy[];
 }
-
-const SOCIAL_META: { key: 'telegram' | 'discord' | 'vk' | 'youtube' | 'rutube' | 'twitch'; label: string; icon: string; color: string }[] = [
-  { key: 'telegram', label: 'Telegram', icon: 'Send', color: 'hsl(200 85% 55%)' },
-  { key: 'discord', label: 'Discord', icon: 'MessageCircle', color: 'hsl(235 85% 65%)' },
-  { key: 'vk', label: 'ВКонтакте', icon: 'Share2', color: 'hsl(210 78% 58%)' },
-  { key: 'youtube', label: 'YouTube', icon: 'Youtube', color: 'hsl(0 72% 55%)' },
-  { key: 'rutube', label: 'Rutube', icon: 'Video', color: 'hsl(20 85% 55%)' },
-  { key: 'twitch', label: 'Twitch', icon: 'Twitch', color: 'hsl(262 60% 60%)' },
-];
 
 const ASSIGNABLE_ROLES = ['diplomat', 'marshal', 'lord', 'knight'] as const;
 
@@ -625,7 +618,7 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
               {SOCIAL_META.map(s => (
                 <div key={s.key} className="flex items-center gap-2">
                   <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${s.color.replace(')', ' / 0.15)')}` }}>
-                    <Icon name={s.icon} size={16} style={{ color: s.color }} />
+                    <SocialIcon meta={s} size={18} />
                   </div>
                   <input type="url" placeholder={`Ссылка на ${s.label}`}
                     value={socialsForm[s.key]?.url ?? ''}
@@ -657,7 +650,7 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
                 <a key={s.key} href={house.socials[s.key].url} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all"
                   style={{ background: `${s.color.replace(')', ' / 0.12)')}`, border: `1px solid ${s.color.replace(')', ' / 0.3)')}`, color: s.color, fontFamily: 'Manrope, sans-serif' }}>
-                  <Icon name={s.icon} size={15} /> {s.label}
+                  <SocialIcon meta={s} size={18} /> {s.label}
                 </a>
               ))}
               {SOCIAL_META.every(s => !(house.socials?.[s.key]?.visible && house.socials?.[s.key]?.url)) && (
