@@ -11,6 +11,8 @@ interface User {
   bio?: string;
   house_id?: number | null;
   house_name?: string;
+  house_role?: string;
+  house_role_label?: string;
 }
 
 interface AuthContextType {

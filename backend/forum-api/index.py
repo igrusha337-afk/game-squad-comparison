@@ -32,32 +32,21 @@ def get_conn():
 
 
 def award_and_refresh(conn, user_id, action_type, points, ref_id=None):
-    """Начислить баллы пользователю и пересчитать рейтинг домов."""
+    """Записать баллы активности пользователя (не влияет на рейтинг дома —
+    рейтинг дома считается по заполненности карточки и числу участников в houses-api)."""
     with conn.cursor() as cur:
         cur.execute(
             f"INSERT INTO {SCHEMA}.activity_points (user_id, action_type, points, ref_id) VALUES (%s, %s, %s, %s)",
             (user_id, action_type, points, ref_id)
         )
-        cur.execute(
-            f"""UPDATE {SCHEMA}.houses SET rating_points = (
-                SELECT COALESCE(SUM(ap.points), 0) FROM {SCHEMA}.activity_points ap
-                JOIN {SCHEMA}.users u ON u.id = ap.user_id WHERE u.house_id = houses.id
-            )"""
-        )
 
 
 def revoke_and_refresh(conn, ref_id, ref_type):
-    """Списать все баллы связанные с ref_id (тема/пост/гайд) и пересчитать рейтинг."""
+    """Списать баллы активности связанные с ref_id (тема/пост/гайд)."""
     with conn.cursor() as cur:
         cur.execute(
             f"DELETE FROM {SCHEMA}.activity_points WHERE ref_id = %s AND action_type LIKE %s",
             (ref_id, ref_type + '%')
-        )
-        cur.execute(
-            f"""UPDATE {SCHEMA}.houses SET rating_points = (
-                SELECT COALESCE(SUM(ap.points), 0) FROM {SCHEMA}.activity_points ap
-                JOIN {SCHEMA}.users u ON u.id = ap.user_id WHERE u.house_id = houses.id
-            )"""
         )
 
 

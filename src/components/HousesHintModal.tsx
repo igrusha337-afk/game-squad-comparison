@@ -6,20 +6,21 @@ interface Props {
 
 const FEATURES: { icon: string; title: string; desc: string }[] = [
   { icon: 'Shield', title: 'Создание дома', desc: 'Основайте свой дом с гербом, названием и описанием. Один игрок может создать только один дом.' },
-  { icon: 'Users', title: 'Участники', desc: 'Приглашайте соратников — они смогут вступить в дом и пополнить его ряды.' },
-  { icon: 'Trophy', title: 'Рейтинг активности', desc: 'Дом набирает баллы за активность участников и поднимается в общем рейтинге.' },
+  { icon: 'Users', title: 'Участники и роли', desc: 'Приглашайте соратников и назначайте им роли: дипломат, маршал, лорд или рыцарь. Роль отображается рядом с ником в доме и в профиле.' },
+  { icon: 'Trophy', title: 'Рейтинг активности', desc: 'Дом набирает баллы за заполненность карточки и количество участников и поднимается в общем рейтинге.' },
+  { icon: 'Award', title: 'Трофеи дома', desc: 'Администрация может вручить дому трофей «Главная столица» или «Второстепенная столица» за особые заслуги.' },
   { icon: 'Pencil', title: 'Управление домом', desc: 'Глава дома может редактировать шапку, описание, добавлять видео, фото и аудио.' },
   { icon: 'Crown', title: 'Передача власти', desc: 'Глава может передать управление домом любому участнику или исключить кого-то из состава.' },
-  { icon: 'Send', title: 'Соцсети', desc: 'Добавьте ссылки на Telegram, Discord, ВКонтакте, YouTube и Rutube своего дома.' },
+  { icon: 'Send', title: 'Соцсети', desc: 'Добавьте ссылки на Telegram, Discord, ВКонтакте, YouTube, Rutube и Twitch своего дома — они появятся и в карточке дома в общем списке.' },
 ];
 
-const RATING_RULES: { action: string; points: number }[] = [
-  { action: 'Вступление в дом', points: 5 },
-  { action: 'Публикация ответа на форуме', points: 5 },
-  { action: 'Создание новой темы на форуме', points: 10 },
-  { action: 'Лайк, полученный на тему форума', points: 3 },
-  { action: 'Публикация гайда', points: 15 },
-  { action: 'Лайк, полученный на гайд', points: 5 },
+const SCORE_RULES: { action: string; points: number }[] = [
+  { action: 'Герб дома загружен', points: 10 },
+  { action: 'Заполнено краткое описание', points: 10 },
+  { action: 'Заполнено полное описание (от 20 символов)', points: 10 },
+  { action: 'Добавлено хотя бы одно фото', points: 10 },
+  { action: 'Добавлено видео, аудио или ссылка на соцсеть', points: 10 },
+  { action: 'Каждый участник дома', points: 5 },
 ];
 
 export default function HousesHintModal({ onClose }: Props) {
@@ -84,7 +85,7 @@ export default function HousesHintModal({ onClose }: Props) {
               </span>
             </div>
             <div className="space-y-1.5">
-              {RATING_RULES.map(r => (
+              {SCORE_RULES.map(r => (
                 <div key={r.action} className="flex items-center justify-between gap-3 text-xs" style={{ fontFamily: 'Manrope, sans-serif' }}>
                   <span style={{ color: 'hsl(222 8% 68%)' }}>{r.action}</span>
                   <span className="flex-shrink-0 font-semibold px-2 py-0.5 rounded-md" style={{ background: 'hsl(42 76% 50% / 0.15)', color: 'hsl(42 76% 68%)' }}>
@@ -94,7 +95,8 @@ export default function HousesHintModal({ onClose }: Props) {
               ))}
             </div>
             <p className="text-[11px] mt-2.5 leading-relaxed" style={{ color: 'hsl(222 8% 46%)', fontFamily: 'Manrope, sans-serif' }}>
-              Баллы каждого участника суммируются в общий рейтинг дома. При выходе участника из дома баллы за вступление снимаются.
+              За заполнение карточки дома можно получить не более 50 баллов (по 10 за каждый из пяти пунктов), плюс 5 баллов за каждого участника дома.
+              Баллы пересчитываются автоматически при любом изменении карточки, вступлении и выходе участников.
             </p>
           </div>
         </div>

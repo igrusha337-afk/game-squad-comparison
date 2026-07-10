@@ -220,16 +220,32 @@ export const guidesApi = {
 };
 
 // Houses
+export const HOUSE_ROLES: Record<string, string> = {
+  owner: 'Глава дома',
+  diplomat: 'Дипломат',
+  marshal: 'Маршал',
+  lord: 'Лорд',
+  knight: 'Рыцарь',
+};
+
+export const HOUSE_TROPHY_TYPES: Record<string, string> = {
+  capital: 'Главная столица',
+  secondary_capital: 'Второстепенная столица',
+};
+
+export type HouseSort = 'points' | 'members' | 'date_new' | 'date_old';
+
 export const housesApi = {
-  list: () => request(URLS.housesApi),
+  list: (sort?: HouseSort) => request(sort ? `${URLS.housesApi}?sort=${sort}` : URLS.housesApi),
   getHouse: (id: number) => request(`${URLS.housesApi}?action=house&id=${id}`),
+  adminList: () => request(`${URLS.housesApi}?action=admin_list`),
   create: (data: { name: string; short_desc: string; server: string; emblem_file?: string; emblem_content_type?: string }) =>
     request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'create_house', ...data }) }),
   update: (house_id: number, data: {
     name?: string; short_desc?: string; server?: string; emblem_file?: string; emblem_content_type?: string;
     description?: string; video_file?: string; video_content_type?: string; photo_file?: string; photo_content_type?: string;
-    telegram_url?: string; discord_url?: string; vk_url?: string; youtube_url?: string; rutube_url?: string;
-    telegram_visible?: boolean; discord_visible?: boolean; vk_visible?: boolean; youtube_visible?: boolean; rutube_visible?: boolean;
+    telegram_url?: string; discord_url?: string; vk_url?: string; youtube_url?: string; rutube_url?: string; twitch_url?: string;
+    telegram_visible?: boolean; discord_visible?: boolean; vk_visible?: boolean; youtube_visible?: boolean; rutube_visible?: boolean; twitch_visible?: boolean;
   }) =>
     request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'update_house', house_id, ...data }) }),
   join: (house_id: number) =>
@@ -246,6 +262,12 @@ export const housesApi = {
     request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'upload_audio', house_id, ...data }) }),
   deleteAudio: (audio_id: number) =>
     request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'delete_audio', audio_id }) }),
+  setMemberRole: (house_id: number, member_id: number, role: string) =>
+    request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'set_member_role', house_id, member_id, role }) }),
+  awardTrophy: (house_id: number, trophy_type: string) =>
+    request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'award_trophy', house_id, trophy_type }) }),
+  revokeTrophy: (house_id: number, trophy_type: string) =>
+    request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'revoke_trophy', house_id, trophy_type }) }),
 };
 
 // Treaties

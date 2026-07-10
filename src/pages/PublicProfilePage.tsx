@@ -14,6 +14,7 @@ interface PublicUser {
   created_at: string;
   house_id?: number | null;
   house_name?: string;
+  house_role_label?: string;
 }
 
 interface Props {
@@ -89,6 +90,9 @@ export default function PublicProfilePage({ userId, onBack, onOpenMessages }: Pr
               {profile.house_name && (
                 <span className="text-sm font-semibold" style={{ color: 'hsl(42 76% 58%)', fontFamily: 'Manrope, sans-serif' }}>
                   [{profile.house_name}]
+                  {profile.house_role_label && (
+                    <span className="ml-1 font-normal" style={{ color: 'hsl(222 8% 54%)' }}>· {profile.house_role_label}</span>
+                  )}
                 </span>
               )}
               {profile.is_admin && (

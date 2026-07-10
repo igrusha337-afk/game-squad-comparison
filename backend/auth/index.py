@@ -47,12 +47,21 @@ def json_response(data, status=200):
     }
 
 
+HOUSE_ROLES = {
+    'owner': 'Глава дома',
+    'diplomat': 'Дипломат',
+    'marshal': 'Маршал',
+    'lord': 'Лорд',
+    'knight': 'Рыцарь',
+}
+
+
 def get_session_user(session_id: str, conn):
     if not session_id:
         return None
     with conn.cursor() as cur:
         cur.execute(
-            f"SELECT u.id, u.username, u.email, u.is_admin, u.avatar_url, u.bio, u.cover_url, u.house_id, u.house_name FROM {SCHEMA}.sessions s "
+            f"SELECT u.id, u.username, u.email, u.is_admin, u.avatar_url, u.bio, u.cover_url, u.house_id, u.house_name, u.house_role FROM {SCHEMA}.sessions s "
             f"JOIN {SCHEMA}.users u ON u.id = s.user_id "
             f"WHERE s.id = %s AND s.expires_at > now()",
             (session_id,)
@@ -61,7 +70,8 @@ def get_session_user(session_id: str, conn):
         if row:
             return {'id': row[0], 'username': row[1], 'email': row[2], 'is_admin': row[3],
                     'avatar_url': row[4] or '', 'bio': row[5] or '', 'cover_url': row[6] or '',
-                    'house_id': row[7], 'house_name': row[8] or ''}
+                    'house_id': row[7], 'house_name': row[8] or '',
+                    'house_role': row[9] or '', 'house_role_label': HOUSE_ROLES.get(row[9] or '', '')}
     return None
 
 

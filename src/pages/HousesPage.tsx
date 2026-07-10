@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { housesApi } from '@/lib/api';
+import { housesApi, HouseSort } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import Icon from '@/components/ui/icon';
-import { cacheGet, cacheSet, cacheInvalidate } from '@/lib/cache';
+import { cacheSet } from '@/lib/cache';
 import HousesHintModal from '@/components/HousesHintModal';
 import { resizeImageToBase64 } from '@/lib/imageResize';
+import HouseTrophies, { Trophy } from '@/components/HouseTrophies';
 
 const HOUSES_HINT_SEEN_KEY = 'houses-hint-seen';
 
@@ -13,6 +14,11 @@ const SERVERS = [
   'EU4 Legion Warhall', 'EU5 Balguksa', 'EU6 Terracotta Vanguard',
   'EU7 Ferrea Corona', 'EU8 Iron Dawn',
 ];
+
+interface SocialShort {
+  url: string;
+  visible: boolean;
+}
 
 interface House {
   id: number;
@@ -25,7 +31,25 @@ interface House {
   rating_points: number;
   member_count: number;
   created_at: string;
+  trophies?: Trophy[];
+  socials?: Record<'telegram' | 'discord' | 'vk' | 'youtube' | 'rutube' | 'twitch', SocialShort>;
 }
+
+const SOCIAL_META: { key: 'telegram' | 'discord' | 'vk' | 'youtube' | 'rutube' | 'twitch'; icon: string; color: string }[] = [
+  { key: 'telegram', icon: 'Send', color: 'hsl(200 85% 55%)' },
+  { key: 'discord', icon: 'MessageCircle', color: 'hsl(235 85% 65%)' },
+  { key: 'vk', icon: 'Share2', color: 'hsl(210 78% 58%)' },
+  { key: 'youtube', icon: 'Youtube', color: 'hsl(0 72% 55%)' },
+  { key: 'rutube', icon: 'Video', color: 'hsl(20 85% 55%)' },
+  { key: 'twitch', icon: 'Twitch', color: 'hsl(262 60% 60%)' },
+];
+
+const SORT_OPTIONS: { value: HouseSort; label: string; icon: string }[] = [
+  { value: 'points', label: 'По баллам', icon: 'Trophy' },
+  { value: 'members', label: 'По участникам', icon: 'Users' },
+  { value: 'date_new', label: 'Сначала новые', icon: 'ArrowDownWideNarrow' },
+  { value: 'date_old', label: 'Сначала старые', icon: 'ArrowUpNarrowWide' },
+];
 
 interface Props {
   onOpenHouse: (id: number) => void;
@@ -45,6 +69,7 @@ export default function HousesPage({ onOpenHouse, onOpenProfile }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [showHint, setShowHint] = useState(false);
+  const [sort, setSort] = useState<HouseSort>('points');
   const emblemRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -54,19 +79,17 @@ export default function HousesPage({ onOpenHouse, onOpenProfile }: Props) {
     }
   }, []);
 
-  const load = useCallback(async (force = false) => {
-    const cached = cacheGet<House[]>('houses');
-    if (cached && !force) { setHouses(cached); setLoading(false); return; }
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      const d = await housesApi.list();
+      const d = await housesApi.list(sort);
       const list = d.houses || [];
       cacheSet('houses', list);
       setHouses(list);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [sort]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -95,9 +118,8 @@ export default function HousesPage({ onOpenHouse, onOpenProfile }: Props) {
       if (emblemFile) { payload.emblem_file = emblemFile.data; payload.emblem_content_type = emblemFile.type; }
       const res = await housesApi.create(payload);
       setShowForm(false); setName(''); setShortDesc(''); setEmblemFile(null); setEmblemPreview(null);
-      updateUser({ house_id: res.house_id, house_name: name.trim() });
-      cacheInvalidate('houses');
-      await load(true);
+      updateUser({ house_id: res.house_id, house_name: name.trim(), house_role: 'owner', house_role_label: 'Глава дома' });
+      await load();
       onOpenHouse(res.house_id);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Ошибка');
@@ -135,15 +157,26 @@ export default function HousesPage({ onOpenHouse, onOpenProfile }: Props) {
           </div>
           <p className="text-muted-foreground text-sm mt-0.5">Боевые братства и их рейтинг активности</p>
         </div>
-        {canCreate && !showForm && (
-          <button onClick={() => setShowForm(true)}
-            className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
-            style={{ background: 'hsl(42 76% 50% / 0.15)', border: '1px solid hsl(42 76% 50% / 0.4)', color: 'hsl(42 76% 68%)', fontFamily: 'Manrope, sans-serif' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'hsl(42 76% 50% / 0.25)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'hsl(42 76% 50% / 0.15)'; }}>
-            <Icon name="Plus" size={15} /> Создать дом
-          </button>
-        )}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="relative">
+            <select value={sort} onChange={e => setSort(e.target.value as HouseSort)}
+              className="appearance-none pl-9 pr-8 py-2.5 rounded-xl text-sm font-semibold outline-none cursor-pointer"
+              style={{ background: 'hsl(222 20% 14%)', border: '1px solid hsl(222 14% 22%)', color: 'hsl(222 8% 62%)', fontFamily: 'Manrope, sans-serif' }}>
+              {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+            <Icon name="ArrowUpDown" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'hsl(42 50% 58%)' }} />
+            <Icon name="ChevronDown" size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'hsl(222 8% 50%)' }} />
+          </div>
+          {canCreate && !showForm && (
+            <button onClick={() => setShowForm(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
+              style={{ background: 'hsl(42 76% 50% / 0.15)', border: '1px solid hsl(42 76% 50% / 0.4)', color: 'hsl(42 76% 68%)', fontFamily: 'Manrope, sans-serif' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'hsl(42 76% 50% / 0.25)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'hsl(42 76% 50% / 0.15)'; }}>
+              <Icon name="Plus" size={15} /> Создать дом
+            </button>
+          )}
+        </div>
       </div>
 
       {showHint && <HousesHintModal onClose={() => setShowHint(false)} />}
@@ -296,6 +329,7 @@ export default function HousesPage({ onOpenHouse, onOpenProfile }: Props) {
                           {h.server}
                         </span>
                       )}
+                      {h.trophies && h.trophies.length > 0 && <HouseTrophies trophies={h.trophies} />}
                     </div>
                     {h.short_desc && (
                       <p className="text-sm leading-relaxed line-clamp-3 mb-1.5" style={{ color: 'hsl(222 8% 58%)', fontFamily: 'Manrope, sans-serif', whiteSpace: 'pre-line' }}>{h.short_desc}</p>
@@ -305,6 +339,13 @@ export default function HousesPage({ onOpenHouse, onOpenProfile }: Props) {
                         {h.owner}
                       </button>
                       <span className="flex items-center gap-1 whitespace-nowrap"><Icon name="Users" size={12} /> {h.member_count}</span>
+                      {SOCIAL_META.filter(s => h.socials?.[s.key]?.visible && h.socials?.[s.key]?.url).map(s => (
+                        <a key={s.key} href={h.socials![s.key].url} target="_blank" rel="noopener noreferrer"
+                          onClick={e => e.stopPropagation()} title={s.key}
+                          className="flex items-center transition-opacity hover:opacity-80">
+                          <Icon name={s.icon} size={13} style={{ color: s.color }} />
+                        </a>
+                      ))}
                     </div>
                   </div>
                   {/* Рейтинг */}

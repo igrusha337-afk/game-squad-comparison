@@ -302,9 +302,16 @@ export default function ProfilePage({ onOpenMessages }: Props) {
               <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'hsl(42 76% 50% / 0.15)', border: '1px solid hsl(42 76% 50% / 0.3)' }}>
                 <Icon name="Shield" size={15} style={{ color: 'hsl(42 76% 62%)' }} />
               </div>
-              <span className="font-semibold" style={{ color: 'hsl(42 76% 68%)', fontFamily: 'Manrope, sans-serif', fontSize: '1rem' }}>
-                [{user.house_name}]
-              </span>
+              <div>
+                <span className="font-semibold block" style={{ color: 'hsl(42 76% 68%)', fontFamily: 'Manrope, sans-serif', fontSize: '1rem' }}>
+                  [{user.house_name}]
+                </span>
+                {user.house_role_label && (
+                  <span className="text-xs" style={{ color: 'hsl(222 8% 54%)', fontFamily: 'Manrope, sans-serif' }}>
+                    {user.house_role_label}
+                  </span>
+                )}
+              </div>
             </div>
             <button onClick={handleLeaveHouse} disabled={leavingHouse}
               className="text-xs px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"

@@ -6,6 +6,8 @@ import Icon from '@/components/ui/icon';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 import { resizeImageToBase64 } from '@/lib/imageResize';
 import ImageLightbox from '@/components/ImageLightbox';
+import HouseTrophies, { Trophy } from '@/components/HouseTrophies';
+import { HOUSE_ROLES } from '@/lib/api';
 
 const SERVERS = [
   'EU1 Crystal Sea', 'EU2 Pantheon Warhall', 'EU3',
@@ -32,18 +34,22 @@ interface HouseDetail {
   member_count: number;
   created_at: string;
   photos: { id: number; photo_url: string }[];
-  members: { id: number; username: string; avatar_url: string; house_name: string }[];
+  members: { id: number; username: string; avatar_url: string; house_name: string; house_role: string; house_role_label: string }[];
   audio: { id: number; audio_url: string; title: string }[];
-  socials: Record<'telegram' | 'discord' | 'vk' | 'youtube' | 'rutube', SocialLink>;
+  socials: Record<'telegram' | 'discord' | 'vk' | 'youtube' | 'rutube' | 'twitch', SocialLink>;
+  trophies: Trophy[];
 }
 
-const SOCIAL_META: { key: 'telegram' | 'discord' | 'vk' | 'youtube' | 'rutube'; label: string; icon: string; color: string }[] = [
+const SOCIAL_META: { key: 'telegram' | 'discord' | 'vk' | 'youtube' | 'rutube' | 'twitch'; label: string; icon: string; color: string }[] = [
   { key: 'telegram', label: 'Telegram', icon: 'Send', color: 'hsl(200 85% 55%)' },
   { key: 'discord', label: 'Discord', icon: 'MessageCircle', color: 'hsl(235 85% 65%)' },
   { key: 'vk', label: 'ВКонтакте', icon: 'Share2', color: 'hsl(210 78% 58%)' },
   { key: 'youtube', label: 'YouTube', icon: 'Youtube', color: 'hsl(0 72% 55%)' },
   { key: 'rutube', label: 'Rutube', icon: 'Video', color: 'hsl(20 85% 55%)' },
+  { key: 'twitch', label: 'Twitch', icon: 'Twitch', color: 'hsl(262 60% 60%)' },
 ];
+
+const ASSIGNABLE_ROLES = ['diplomat', 'marshal', 'lord', 'knight'] as const;
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -92,6 +98,7 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
   const [socialsForm, setSocialsForm] = useState<Record<string, { url: string; visible: boolean }>>({});
   const [savingSocials, setSavingSocials] = useState(false);
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
+  const [changingRoleId, setChangingRoleId] = useState<number | null>(null);
   const videoRef = useRef<HTMLInputElement>(null);
   const photoRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLInputElement>(null);
@@ -228,6 +235,18 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Ошибка удаления');
       setDeleting(false);
+    }
+  };
+
+  const handleChangeRole = async (memberId: number, role: string) => {
+    setChangingRoleId(memberId);
+    try {
+      await housesApi.setMemberRole(houseId, memberId, role);
+      await load();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Ошибка назначения роли');
+    } finally {
+      setChangingRoleId(null);
     }
   };
 
@@ -420,6 +439,7 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
                         {house.server}
                       </span>
                     )}
+                    {house.trophies && house.trophies.length > 0 && <HouseTrophies trophies={house.trophies} size={14} />}
                     <span className="text-xs" style={{ color: 'hsl(222 8% 54%)', fontFamily: 'Manrope, sans-serif' }}>
                       Основал <button className="hover:text-foreground transition-colors font-medium" onClick={() => onOpenProfile?.(house.owner_id)}>{house.owner}</button>
                     </span>
@@ -710,14 +730,28 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
                       {m.username}
                       {m.id === house.owner_id && <span className="ml-1 text-[10px]" style={{ color: 'hsl(42 76% 62%)' }}>👑</span>}
                     </div>
+                    {m.house_role_label && (
+                      <div className="text-[11px] truncate" style={{ color: 'hsl(42 50% 54%)', fontFamily: 'Manrope, sans-serif' }}>
+                        {m.house_role_label}
+                      </div>
+                    )}
                   </div>
                 </button>
                 {canManage && m.id !== house.owner_id && (
-                  <button onClick={() => handleKickMember(m.id, m.username)} disabled={kickingId === m.id}
-                    className="flex-shrink-0 p-1.5 rounded-lg hover:bg-white/5 transition-colors disabled:opacity-50"
-                    title="Исключить из дома">
-                    <Icon name={kickingId === m.id ? 'Loader' : 'UserX'} size={14} className={kickingId === m.id ? 'animate-spin' : ''} style={{ color: 'hsl(355 62% 58%)' }} />
-                  </button>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <select value={m.house_role || 'knight'} disabled={changingRoleId === m.id}
+                      onClick={e => e.stopPropagation()}
+                      onChange={e => handleChangeRole(m.id, e.target.value)}
+                      className="text-[11px] rounded-lg px-1.5 py-1 outline-none disabled:opacity-50"
+                      style={{ background: 'hsl(222 20% 14%)', border: '1px solid hsl(222 14% 22%)', color: 'hsl(222 8% 62%)', fontFamily: 'Manrope, sans-serif' }}>
+                      {ASSIGNABLE_ROLES.map(r => <option key={r} value={r}>{HOUSE_ROLES[r]}</option>)}
+                    </select>
+                    <button onClick={() => handleKickMember(m.id, m.username)} disabled={kickingId === m.id}
+                      className="p-1.5 rounded-lg hover:bg-white/5 transition-colors disabled:opacity-50"
+                      title="Исключить из дома">
+                      <Icon name={kickingId === m.id ? 'Loader' : 'UserX'} size={14} className={kickingId === m.id ? 'animate-spin' : ''} style={{ color: 'hsl(355 62% 58%)' }} />
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
