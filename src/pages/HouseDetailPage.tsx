@@ -28,19 +28,21 @@ interface HouseDetail {
   emblem_url: string;
   short_desc: string;
   description: string;
-  video_url: string;
   server: string;
   owner_id: number;
   owner: string;
   rating_points: number;
   member_count: number;
   created_at: string;
+  videos: { id: number; video_url: string; title: string }[];
   photos: { id: number; photo_url: string }[];
   members: { id: number; username: string; avatar_url: string; house_name: string; house_role: string; house_role_label: string }[];
   audio: { id: number; audio_url: string; title: string }[];
   socials: Record<'telegram' | 'discord' | 'vk' | 'youtube' | 'rutube' | 'twitch', SocialLink>;
   trophies: Trophy[];
 }
+
+const MAX_VIDEOS = 10;
 
 const ASSIGNABLE_ROLES = ['diplomat', 'marshal', 'lord', 'knight'] as const;
 
@@ -298,18 +300,29 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('video/')) { alert('Выберите видео файл'); return; }
-    if (file.size > 100 * 1024 * 1024) { alert('Видео должно быть не более 100 МБ'); return; }
+    if (!file.type.startsWith('video/')) { alert('Выберите видео файл'); e.target.value = ''; return; }
+    if (file.size > 30 * 1024 * 1024) { alert('Видео должно быть не более 30 МБ'); e.target.value = ''; return; }
+    if ((house?.videos.length || 0) >= MAX_VIDEOS) { alert(`Достигнут лимит в ${MAX_VIDEOS} видео. Удалите старое, чтобы добавить новое.`); e.target.value = ''; return; }
     setUploadingVideo(true);
     try {
       const base64 = await fileToBase64(file);
-      await housesApi.update(houseId, { video_file: base64, video_content_type: file.type });
+      await housesApi.uploadVideo(houseId, { video_file: base64, video_content_type: file.type, title: file.name });
       await load();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Ошибка загрузки');
     } finally {
       setUploadingVideo(false);
       e.target.value = '';
+    }
+  };
+
+  const handleDeleteVideo = async (videoId: number) => {
+    if (!confirm('Удалить видео?')) return;
+    try {
+      await housesApi.deleteVideo(videoId);
+      await load();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Ошибка удаления');
     }
   };
 
@@ -327,6 +340,16 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
     } finally {
       setUploadingPhoto(false);
       e.target.value = '';
+    }
+  };
+
+  const handleDeletePhoto = async (photoId: number) => {
+    if (!confirm('Удалить фото?')) return;
+    try {
+      await housesApi.deletePhoto(photoId);
+      await load();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Ошибка удаления');
     }
   };
 
@@ -548,23 +571,39 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
       {/* Видео */}
       <div className="rounded-2xl p-5 mb-5" style={{ background: 'hsl(222 18% 9%)', border: '1px solid hsl(222 14% 18%)' }}>
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'hsl(42 50% 54%)', fontFamily: 'Manrope, sans-serif' }}>Видео дома</span>
-          {canManage && (
+          <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'hsl(42 50% 54%)', fontFamily: 'Manrope, sans-serif' }}>
+            Видео дома {house.videos.length > 0 && `(${house.videos.length}/${MAX_VIDEOS})`}
+          </span>
+          {canManage && house.videos.length < MAX_VIDEOS && (
             <>
               <input ref={videoRef} type="file" accept="video/*" className="hidden" onChange={handleVideoUpload} />
               <button onClick={() => videoRef.current?.click()} disabled={uploadingVideo}
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50">
                 <Icon name={uploadingVideo ? 'Loader' : 'Upload'} size={11} className={uploadingVideo ? 'animate-spin' : ''} />
-                {uploadingVideo ? 'Загрузка...' : (house.video_url ? 'Заменить видео' : 'Загрузить видео')}
+                {uploadingVideo ? 'Загрузка...' : 'Добавить видео'}
               </button>
             </>
           )}
         </div>
-        {house.video_url ? (
-          <video src={house.video_url} controls className="w-full rounded-xl" style={{ maxHeight: '320px' }} />
+        {house.videos.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {house.videos.map(v => (
+              <div key={v.id} className="relative group">
+                <video src={v.video_url} controls className="w-full rounded-xl" style={{ maxHeight: '220px' }} />
+                {canManage && (
+                  <button onClick={() => handleDeleteVideo(v.id)}
+                    className="absolute top-2 right-2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                    style={{ background: 'hsl(222 30% 6% / 0.85)' }}
+                    title="Удалить видео">
+                    <Icon name="Trash2" size={14} style={{ color: 'hsl(355 62% 58%)' }} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
         ) : (
           <p className="text-sm" style={{ color: 'hsl(222 8% 40%)', fontFamily: 'Manrope, sans-serif' }}>
-            {canManage ? 'Загрузите видео о вашем доме (до 100 МБ)' : 'Видео не добавлено'}
+            {canManage ? 'Загрузите видео о вашем доме (до 30 МБ, максимум 10 штук)' : 'Видео не добавлено'}
           </p>
         )}
       </div>
@@ -588,9 +627,17 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
           {house.photos.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {house.photos.map(p => (
-                <div key={p.id} onClick={() => setLightboxPhoto(p.photo_url)}
-                  className="aspect-video rounded-xl overflow-hidden cursor-pointer">
-                  <img src={p.photo_url} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                <div key={p.id} className="relative group aspect-video rounded-xl overflow-hidden">
+                  <img src={p.photo_url} alt="" onClick={() => setLightboxPhoto(p.photo_url)}
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300 cursor-pointer" />
+                  {canManage && (
+                    <button onClick={() => handleDeletePhoto(p.id)}
+                      className="absolute top-1.5 right-1.5 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                      style={{ background: 'hsl(222 30% 6% / 0.85)' }}
+                      title="Удалить фото">
+                      <Icon name="Trash2" size={13} style={{ color: 'hsl(355 62% 58%)' }} />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

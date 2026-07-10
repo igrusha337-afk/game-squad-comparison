@@ -243,7 +243,7 @@ export const housesApi = {
     request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'create_house', ...data }) }),
   update: (house_id: number, data: {
     name?: string; short_desc?: string; server?: string; emblem_file?: string; emblem_content_type?: string;
-    description?: string; video_file?: string; video_content_type?: string; photo_file?: string; photo_content_type?: string;
+    description?: string; photo_file?: string; photo_content_type?: string;
     telegram_url?: string; discord_url?: string; vk_url?: string; youtube_url?: string; rutube_url?: string; twitch_url?: string;
     telegram_visible?: boolean; discord_visible?: boolean; vk_visible?: boolean; youtube_visible?: boolean; rutube_visible?: boolean; twitch_visible?: boolean;
   }) =>
@@ -258,6 +258,12 @@ export const housesApi = {
     request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'delete_house', house_id }) }),
   transferOwnership: (house_id: number, new_owner_id: number) =>
     request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'transfer_ownership', house_id, new_owner_id }) }),
+  uploadVideo: (house_id: number, data: { video_file: string; video_content_type: string; title?: string }) =>
+    request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'upload_video', house_id, ...data }) }),
+  deleteVideo: (video_id: number) =>
+    request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'delete_video', video_id }) }),
+  deletePhoto: (photo_id: number) =>
+    request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'delete_photo', photo_id }) }),
   uploadAudio: (house_id: number, data: { audio_file: string; audio_content_type: string; title?: string }) =>
     request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'upload_audio', house_id, ...data }) }),
   deleteAudio: (audio_id: number) =>

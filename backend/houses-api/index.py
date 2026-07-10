@@ -1,15 +1,18 @@
 """
 Houses API: управление домами CB.
 GET  /                       — список домов. Поддерживает sort=points|members|date_new|date_old (по умолчанию points)
-GET  /?action=house&id=N     — детали дома (фото галерея + members с ролями + audio + соцсети + трофеи)
+GET  /?action=house&id=N     — детали дома (видео + фото галерея + members с ролями + audio + соцсети + трофеи)
 POST action=create_house     — создать дом
 POST action=update_house     — обновить дом: шапка (name/short_desc/server/emblem), описание,
-                                видео, фото, соцсети (owner или admin)
+                                фото, соцсети (owner или admin)
 POST action=join_house       — вступить в дом
 POST action=leave_house      — покинуть дом
 POST action=kick_member      — исключить участника (owner или admin)
 POST action=delete_house     — удалить дом (owner или admin)
 POST action=transfer_ownership — передать права главы дома другому участнику (owner или admin)
+POST action=upload_video     — загрузить видео дома, до 30 МБ, максимум 10 штук (owner или admin)
+POST action=delete_video     — удалить видео дома (owner или admin)
+POST action=delete_photo     — удалить фото дома (owner или admin)
 POST action=upload_audio     — загрузить аудио дома, до 25 МБ (owner или admin)
 POST action=delete_audio     — удалить аудио дома (owner или admin)
 POST action=award_points     — начислить баллы активности (только из других функций)
@@ -54,8 +57,9 @@ ALLOWED_AUDIO_TYPES = {
     'audio/x-m4a': 'm4a',
 }
 MAX_IMAGE_SIZE = 5 * 1024 * 1024    # 5 MB
-MAX_VIDEO_SIZE = 100 * 1024 * 1024  # 100 MB
+MAX_VIDEO_SIZE = 30 * 1024 * 1024   # 30 MB — большие файлы не проходят через шлюз облачной функции в виде base64
 MAX_AUDIO_SIZE = 25 * 1024 * 1024   # 25 MB
+MAX_VIDEOS_PER_HOUSE = 10
 
 SOCIAL_FIELDS = ['telegram', 'discord', 'vk', 'youtube', 'rutube', 'twitch']
 
@@ -227,7 +231,7 @@ def refresh_rating_points(conn, house_id=None):
                 (CASE WHEN h.short_desc <> '' THEN 10 ELSE 0 END) +
                 (CASE WHEN length(h.description) > 20 THEN 10 ELSE 0 END) +
                 (CASE WHEN EXISTS(SELECT 1 FROM {SCHEMA}.house_photos p WHERE p.house_id = h.id) THEN 10 ELSE 0 END) +
-                (CASE WHEN h.video_url <> '' THEN 5 ELSE 0 END) +
+                (CASE WHEN EXISTS(SELECT 1 FROM {SCHEMA}.house_videos v WHERE v.house_id = h.id) THEN 5 ELSE 0 END) +
                 (CASE WHEN EXISTS(SELECT 1 FROM {SCHEMA}.house_audio a WHERE a.house_id = h.id) THEN 5 ELSE 0 END) +
                 (CASE WHEN (h.telegram_url <> '' OR h.discord_url <> '' OR h.vk_url <> ''
                            OR h.youtube_url <> '' OR h.rutube_url <> '' OR h.twitch_url <> '')
@@ -305,7 +309,7 @@ def handle_house_detail(house_id, conn):
         # Дополнительные поля
         cur.execute(
             f"""
-            SELECT description, video_url,
+            SELECT description,
                    telegram_url, discord_url, vk_url, youtube_url, rutube_url, twitch_url,
                    telegram_visible, discord_visible, vk_visible, youtube_visible, rutube_visible, twitch_visible
             FROM {SCHEMA}.houses WHERE id = %s
@@ -314,15 +318,21 @@ def handle_house_detail(house_id, conn):
         )
         extra = cur.fetchone()
         house['description'] = extra[0] if extra else None
-        house['video_url'] = extra[1] if extra else None
         house['socials'] = {
-            'telegram': {'url': extra[2] or '', 'visible': extra[8]},
-            'discord': {'url': extra[3] or '', 'visible': extra[9]},
-            'vk': {'url': extra[4] or '', 'visible': extra[10]},
-            'youtube': {'url': extra[5] or '', 'visible': extra[11]},
-            'rutube': {'url': extra[6] or '', 'visible': extra[12]},
-            'twitch': {'url': extra[7] or '', 'visible': extra[13]},
+            'telegram': {'url': extra[1] or '', 'visible': extra[7]},
+            'discord': {'url': extra[2] or '', 'visible': extra[8]},
+            'vk': {'url': extra[3] or '', 'visible': extra[9]},
+            'youtube': {'url': extra[4] or '', 'visible': extra[10]},
+            'rutube': {'url': extra[5] or '', 'visible': extra[11]},
+            'twitch': {'url': extra[6] or '', 'visible': extra[12]},
         } if extra else {}
+
+        # Видео (до 10 штук)
+        cur.execute(
+            f"SELECT id, video_url, title FROM {SCHEMA}.house_videos WHERE house_id = %s ORDER BY id ASC",
+            (house_id,)
+        )
+        house['videos'] = [{'id': r[0], 'video_url': r[1], 'title': r[2]} for r in cur.fetchall()]
 
         # Фото галерея
         cur.execute(
@@ -520,25 +530,6 @@ def handle_update_house(body, user, conn):
                     f"UPDATE {SCHEMA}.houses SET {visible_key} = %s WHERE id = %s",
                     (bool(body[visible_key]), house_id)
                 )
-
-    # Загрузка видео
-    if body.get('video_file'):
-        try:
-            video_url = upload_file(
-                body['video_file'],
-                body.get('video_content_type', 'video/mp4'),
-                'house-videos',
-                ALLOWED_VIDEO_TYPES,
-                MAX_VIDEO_SIZE,
-            )
-            with conn.cursor() as cur:
-                cur.execute(
-                    f"UPDATE {SCHEMA}.houses SET video_url = %s WHERE id = %s",
-                    (video_url, house_id)
-                )
-        except ValueError as e:
-            conn.close()
-            return err(str(e))
 
     # Загрузка фото
     if body.get('photo_file'):
@@ -758,9 +749,146 @@ def handle_delete_house(body, user, conn):
         )
         cur.execute(f"DELETE FROM {SCHEMA}.house_trophies WHERE house_id = %s", (house_id,))
         cur.execute(f"DELETE FROM {SCHEMA}.house_audio WHERE house_id = %s", (house_id,))
+        cur.execute(f"DELETE FROM {SCHEMA}.house_videos WHERE house_id = %s", (house_id,))
         cur.execute(f"DELETE FROM {SCHEMA}.house_photos WHERE house_id = %s", (house_id,))
         cur.execute(f"DELETE FROM {SCHEMA}.houses WHERE id = %s", (house_id,))
 
+    conn.commit()
+    conn.close()
+    return ok({'ok': True})
+
+
+def handle_upload_video(body, user, conn):
+    """POST action=upload_video — загрузить видео дома, до 30 МБ, максимум 10 видео (owner или admin)."""
+    house_id = body.get('house_id')
+    if not house_id:
+        conn.close()
+        return err('house_id обязателен')
+    if not body.get('video_file'):
+        conn.close()
+        return err('video_file обязателен')
+
+    try:
+        house_id = int(house_id)
+    except (TypeError, ValueError):
+        conn.close()
+        return err('Некорректный house_id')
+
+    with conn.cursor() as cur:
+        cur.execute(f"SELECT owner_id FROM {SCHEMA}.houses WHERE id = %s", (house_id,))
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return err('Дом не найден', 404)
+        if row[0] != user['id'] and not user['is_admin']:
+            conn.close()
+            return err('Нет прав для загрузки видео', 403)
+
+        cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.house_videos WHERE house_id = %s", (house_id,))
+        if cur.fetchone()[0] >= MAX_VIDEOS_PER_HOUSE:
+            conn.close()
+            return err(f'Достигнут лимит в {MAX_VIDEOS_PER_HOUSE} видео. Удалите старое видео, чтобы добавить новое.')
+
+    try:
+        video_url = upload_file(
+            body['video_file'],
+            body.get('video_content_type', 'video/mp4'),
+            'house-videos',
+            ALLOWED_VIDEO_TYPES,
+            MAX_VIDEO_SIZE,
+        )
+    except ValueError as e:
+        conn.close()
+        return err(str(e))
+
+    title = (body.get('title') or '').strip()[:150]
+
+    with conn.cursor() as cur:
+        cur.execute(
+            f"INSERT INTO {SCHEMA}.house_videos (house_id, video_url, title) VALUES (%s, %s, %s) RETURNING id",
+            (house_id, video_url, title)
+        )
+        video_id = cur.fetchone()[0]
+
+    refresh_rating_points(conn, house_id)
+    conn.commit()
+    conn.close()
+    return ok({'ok': True, 'video': {'id': video_id, 'video_url': video_url, 'title': title}})
+
+
+def handle_delete_video(body, user, conn):
+    """POST action=delete_video — удалить видео дома (owner или admin)."""
+    video_id = body.get('video_id')
+    if not video_id:
+        conn.close()
+        return err('video_id обязателен')
+
+    try:
+        video_id = int(video_id)
+    except (TypeError, ValueError):
+        conn.close()
+        return err('Некорректный video_id')
+
+    with conn.cursor() as cur:
+        cur.execute(
+            f"""
+            SELECT h.owner_id, h.id FROM {SCHEMA}.house_videos v
+            JOIN {SCHEMA}.houses h ON h.id = v.house_id
+            WHERE v.id = %s
+            """,
+            (video_id,)
+        )
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return err('Видео не найдено', 404)
+        if row[0] != user['id'] and not user['is_admin']:
+            conn.close()
+            return err('Нет прав для удаления видео', 403)
+        house_id = row[1]
+
+        cur.execute(f"DELETE FROM {SCHEMA}.house_videos WHERE id = %s", (video_id,))
+
+    refresh_rating_points(conn, house_id)
+    conn.commit()
+    conn.close()
+    return ok({'ok': True})
+
+
+def handle_delete_photo(body, user, conn):
+    """POST action=delete_photo — удалить фото дома (owner или admin)."""
+    photo_id = body.get('photo_id')
+    if not photo_id:
+        conn.close()
+        return err('photo_id обязателен')
+
+    try:
+        photo_id = int(photo_id)
+    except (TypeError, ValueError):
+        conn.close()
+        return err('Некорректный photo_id')
+
+    with conn.cursor() as cur:
+        cur.execute(
+            f"""
+            SELECT h.owner_id, h.id FROM {SCHEMA}.house_photos p
+            JOIN {SCHEMA}.houses h ON h.id = p.house_id
+            WHERE p.id = %s
+            """,
+            (photo_id,)
+        )
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return err('Фото не найдено', 404)
+        if row[0] != user['id'] and not user['is_admin']:
+            conn.close()
+            return err('Нет прав для удаления фото', 403)
+        house_id = row[1]
+
+        cur.execute(f"DELETE FROM {SCHEMA}.house_photos WHERE id = %s", (photo_id,))
+
+    refresh_rating_points(conn, house_id)
     conn.commit()
     conn.close()
     return ok({'ok': True})
@@ -1129,6 +1257,15 @@ def handler(event: dict, context) -> dict:
 
         if action == 'delete_house':
             return handle_delete_house(body, user, conn)
+
+        if action == 'upload_video':
+            return handle_upload_video(body, user, conn)
+
+        if action == 'delete_video':
+            return handle_delete_video(body, user, conn)
+
+        if action == 'delete_photo':
+            return handle_delete_photo(body, user, conn)
 
         if action == 'upload_audio':
             return handle_upload_audio(body, user, conn)
