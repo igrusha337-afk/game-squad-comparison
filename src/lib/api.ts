@@ -222,7 +222,7 @@ export const guidesApi = {
 // Houses
 export const HOUSE_ROLES: Record<string, string> = {
   owner: 'Глава дома',
-  diplomat: 'Дипломат',
+  diplomat: 'Сенешаль',
   marshal: 'Маршал',
   lord: 'Лорд',
   knight: 'Рыцарь',

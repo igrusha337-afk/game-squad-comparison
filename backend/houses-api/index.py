@@ -61,7 +61,7 @@ SOCIAL_FIELDS = ['telegram', 'discord', 'vk', 'youtube', 'rutube', 'twitch']
 
 HOUSE_ROLES = {
     'owner': 'Глава дома',
-    'diplomat': 'Дипломат',
+    'diplomat': 'Сенешаль',
     'marshal': 'Маршал',
     'lord': 'Лорд',
     'knight': 'Рыцарь',
@@ -70,6 +70,11 @@ HOUSE_ROLES = {
 TROPHY_TYPES = {
     'capital': 'Главная столица',
     'secondary_capital': 'Второстепенная столица',
+}
+
+TROPHY_POINTS = {
+    'capital': 50,
+    'secondary_capital': 30,
 }
 
 
@@ -207,9 +212,11 @@ def fetch_trophies(conn, house_ids):
 # ─── rating update ───────────────────────────────────────────────────────────
 
 def refresh_rating_points(conn, house_id=None):
-    """Пересчитывает rating_points: до 50 баллов за заполненность карточки дома
-    (герб, краткое описание, описание, фото, доп. медиа/соцсети — по 10 за каждый пункт)
-    + 5 баллов за каждого участника дома."""
+    """Пересчитывает rating_points:
+    - герб +10, краткое описание +10, полное описание (от 20 символов) +10, фото +10
+    - видео +5, аудио +5, ссылка на соцсеть (любая) +10
+    - каждый участник дома +5
+    - трофей «Главная столица» +50, «Второстепенная столица» +30 (за каждый выданный трофей)."""
     where = "WHERE h.id = %s" if house_id else ""
     params = (house_id,) if house_id else ()
     with conn.cursor() as cur:
@@ -220,11 +227,14 @@ def refresh_rating_points(conn, house_id=None):
                 (CASE WHEN h.short_desc <> '' THEN 10 ELSE 0 END) +
                 (CASE WHEN length(h.description) > 20 THEN 10 ELSE 0 END) +
                 (CASE WHEN EXISTS(SELECT 1 FROM {SCHEMA}.house_photos p WHERE p.house_id = h.id) THEN 10 ELSE 0 END) +
-                (CASE WHEN (h.video_url <> '' OR EXISTS(SELECT 1 FROM {SCHEMA}.house_audio a WHERE a.house_id = h.id)
-                           OR h.telegram_url <> '' OR h.discord_url <> '' OR h.vk_url <> ''
+                (CASE WHEN h.video_url <> '' THEN 5 ELSE 0 END) +
+                (CASE WHEN EXISTS(SELECT 1 FROM {SCHEMA}.house_audio a WHERE a.house_id = h.id) THEN 5 ELSE 0 END) +
+                (CASE WHEN (h.telegram_url <> '' OR h.discord_url <> '' OR h.vk_url <> ''
                            OR h.youtube_url <> '' OR h.rutube_url <> '' OR h.twitch_url <> '')
                       THEN 10 ELSE 0 END)
             ) + (SELECT COUNT(*) FROM {SCHEMA}.users m WHERE m.house_id = h.id) * 5
+              + (SELECT COALESCE(SUM(CASE t.trophy_type WHEN 'capital' THEN {TROPHY_POINTS['capital']} WHEN 'secondary_capital' THEN {TROPHY_POINTS['secondary_capital']} ELSE 0 END), 0)
+                 FROM {SCHEMA}.house_trophies t WHERE t.house_id = h.id)
             {where}
             """,
             params
@@ -976,6 +986,7 @@ def handle_award_trophy(body, user, conn):
             (house_id, trophy_type, user['id'])
         )
 
+    refresh_rating_points(conn, house_id)
     conn.commit()
     trophies = fetch_trophies(conn, [house_id]).get(house_id, [])
     conn.close()
@@ -1019,6 +1030,7 @@ def handle_revoke_trophy(body, user, conn):
             return err('У дома нет такого трофея')
         cur.execute(f"DELETE FROM {SCHEMA}.house_trophies WHERE id = %s", (row[0],))
 
+    refresh_rating_points(conn, house_id)
     conn.commit()
     trophies = fetch_trophies(conn, [house_id]).get(house_id, [])
     conn.close()

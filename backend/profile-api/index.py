@@ -19,7 +19,7 @@ MAX_SIZE = 5 * 1024 * 1024
 
 HOUSE_ROLES = {
     'owner': 'Глава дома',
-    'diplomat': 'Дипломат',
+    'diplomat': 'Сенешаль',
     'marshal': 'Маршал',
     'lord': 'Лорд',
     'knight': 'Рыцарь',

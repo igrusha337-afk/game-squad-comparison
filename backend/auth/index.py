@@ -49,7 +49,7 @@ def json_response(data, status=200):
 
 HOUSE_ROLES = {
     'owner': 'Глава дома',
-    'diplomat': 'Дипломат',
+    'diplomat': 'Сенешаль',
     'marshal': 'Маршал',
     'lord': 'Лорд',
     'knight': 'Рыцарь',
