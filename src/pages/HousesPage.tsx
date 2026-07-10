@@ -121,12 +121,13 @@ export default function HousesPage({ onOpenHouse, onOpenProfile }: Props) {
     }
   };
 
-  const medal = (rank: number) => {
-    if (rank === 1) return { icon: '🥇', color: 'hsl(42 76% 62%)' };
-    if (rank === 2) return { icon: '🥈', color: 'hsl(220 10% 72%)' };
-    if (rank === 3) return { icon: '🥉', color: 'hsl(22 60% 58%)' };
-    return null;
+  const MEDAL_IMAGES: Record<number, string> = {
+    1: 'https://cdn.poehali.dev/projects/455c24fb-ce5d-4076-9543-1ca6ad6daa72/bucket/c48aa83a-b142-4a1b-9c0f-105970c4169d.png',
+    2: 'https://cdn.poehali.dev/projects/455c24fb-ce5d-4076-9543-1ca6ad6daa72/bucket/dcd0eabd-2946-4d08-9616-feb03da58c34.png',
+    3: 'https://cdn.poehali.dev/projects/455c24fb-ce5d-4076-9543-1ca6ad6daa72/bucket/acc5058b-6e66-44d6-8c6d-2c04aac38982.png',
   };
+
+  const medal = (rank: number) => MEDAL_IMAGES[rank] || null;
 
   const userHasHouse = !!(user?.house_id);
   const canCreate = user && !userHasHouse;
@@ -299,7 +300,7 @@ export default function HousesPage({ onOpenHouse, onOpenProfile }: Props) {
                   {/* Место */}
                   <div className="w-8 text-center flex-shrink-0 pt-1">
                     {m ? (
-                      <span className="text-2xl">{m.icon}</span>
+                      <img src={m} alt={`${idx + 1} место`} className="w-8 h-8 object-contain mx-auto" />
                     ) : (
                       <span className="text-sm font-bold" style={{ color: 'hsl(222 8% 44%)', fontFamily: 'Manrope, sans-serif' }}>#{idx + 1}</span>
                     )}
