@@ -1,9 +1,11 @@
+import { useState, useMemo } from 'react';
 import { UnitRoleDef, TraitDef, AbilityDef, SpecialStatDef } from '@/hooks/useAppData';
 import { Formation, TraitColor } from '@/data/types';
 import Icon from '@/components/ui/icon';
 import AvatarUpload from '@/components/AvatarUpload';
 import { STAT_LABELS, DEFAULT_UNIT_STATS } from './AdminModals';
 import { ALL_STATS } from '@/data/statGroups';
+import { AdminSearchInput } from './AdminSearchInput';
 
 const statOptions = Object.keys(DEFAULT_UNIT_STATS);
 const statOptionsAll = ALL_STATS.map(s => s.key);
@@ -22,6 +24,17 @@ interface AdminTabRolesProps {
 }
 
 export function AdminTabRoles({ roles, roleForm, roleEditing, roleLoading, onFormChange, onSave, onEdit, onDelete, onCancelEdit }: AdminTabRolesProps) {
+  const [search, setSearch] = useState('');
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return roles;
+    return roles.filter(r =>
+      r.name.toLowerCase().includes(q) ||
+      (r.description ?? '').toLowerCase().includes(q)
+    );
+  }, [roles, search]);
+
   return (
     <div className="max-w-xl">
       <div className="bg-card border border-border rounded-sm p-4 mb-4">
@@ -56,8 +69,11 @@ export function AdminTabRoles({ roles, roleForm, roleEditing, roleLoading, onFor
           </div>
         </div>
       </div>
+      <div className="mb-3">
+        <AdminSearchInput value={search} onChange={setSearch} placeholder="Поиск по названию, описанию..." />
+      </div>
       <div className="space-y-2">
-        {roles.map(role => (
+        {filtered.map(role => (
           <div key={role.id} className="bg-card border border-border rounded-sm p-3 flex items-start gap-3">
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium text-foreground">{role.name}</div>
@@ -74,6 +90,7 @@ export function AdminTabRoles({ roles, roleForm, roleEditing, roleLoading, onFor
           </div>
         ))}
         {roles.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Ролей пока нет</p>}
+        {roles.length > 0 && filtered.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Ничего не найдено</p>}
       </div>
     </div>
   );
@@ -93,6 +110,17 @@ interface AdminTabFormationsProps {
 }
 
 export function AdminTabFormations({ formations, formationForm, formationEditing, formationLoading, onFormChange, onSave, onEdit, onDelete, onCancelEdit }: AdminTabFormationsProps) {
+  const [search, setSearch] = useState('');
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return formations;
+    return formations.filter(f =>
+      f.name.toLowerCase().includes(q) ||
+      (f.description ?? '').toLowerCase().includes(q)
+    );
+  }, [formations, search]);
+
   return (
     <div className="max-w-xl">
       <div className="bg-card border border-border rounded-sm p-4 mb-4">
@@ -132,8 +160,11 @@ export function AdminTabFormations({ formations, formationForm, formationEditing
           </div>
         </div>
       </div>
+      <div className="mb-3">
+        <AdminSearchInput value={search} onChange={setSearch} placeholder="Поиск по названию, описанию..." />
+      </div>
       <div className="space-y-2">
-        {formations.map(f => (
+        {filtered.map(f => (
           <div key={f.id} className="bg-card border border-border rounded-sm p-3 flex items-start gap-3">
             {f.avatar_url && <img src={f.avatar_url} alt={f.name} className="w-10 h-10 rounded-sm object-cover flex-shrink-0 border border-border" />}
             <div className="flex-1 min-w-0">
@@ -151,6 +182,7 @@ export function AdminTabFormations({ formations, formationForm, formationEditing
           </div>
         ))}
         {formations.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Построений пока нет</p>}
+        {formations.length > 0 && filtered.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Ничего не найдено</p>}
       </div>
     </div>
   );
@@ -170,6 +202,17 @@ interface AdminTabTraitsProps {
 }
 
 export function AdminTabTraits({ traits, traitForm, traitEditing, traitLoading, onFormChange, onSave, onEdit, onDelete, onCancelEdit }: AdminTabTraitsProps) {
+  const [search, setSearch] = useState('');
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return traits;
+    return traits.filter(t =>
+      t.name.toLowerCase().includes(q) ||
+      (t.description ?? '').toLowerCase().includes(q)
+    );
+  }, [traits, search]);
+
   return (
     <div className="max-w-xl">
       <div className="bg-card border border-border rounded-sm p-4 mb-4">
@@ -231,8 +274,11 @@ export function AdminTabTraits({ traits, traitForm, traitEditing, traitLoading, 
           </div>
         </div>
       </div>
+      <div className="mb-3">
+        <AdminSearchInput value={search} onChange={setSearch} placeholder="Поиск по названию, описанию..." />
+      </div>
       <div className="space-y-2">
-        {traits.map(t => (
+        {filtered.map(t => (
           <div key={t.id} className="bg-card border border-border rounded-sm p-3 flex items-start gap-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
@@ -260,6 +306,7 @@ export function AdminTabTraits({ traits, traitForm, traitEditing, traitLoading, 
           </div>
         ))}
         {traits.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Особенностей пока нет</p>}
+        {traits.length > 0 && filtered.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Ничего не найдено</p>}
       </div>
     </div>
   );
@@ -291,6 +338,17 @@ interface AdminTabAbilitiesProps {
 }
 
 export function AdminTabAbilities({ abilities, abilityForm, abilityEditing, abilityLoading, onFormChange, onSave, onEdit, onDelete, onCancelEdit, onAddMod, onRemoveMod }: AdminTabAbilitiesProps) {
+  const [search, setSearch] = useState('');
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return abilities;
+    return abilities.filter(a =>
+      a.name.toLowerCase().includes(q) ||
+      (a.description ?? '').toLowerCase().includes(q)
+    );
+  }, [abilities, search]);
+
   return (
     <div className="max-w-xl">
       <div className="bg-card border border-border rounded-sm p-4 mb-4">
@@ -367,8 +425,11 @@ export function AdminTabAbilities({ abilities, abilityForm, abilityEditing, abil
           </div>
         </div>
       </div>
+      <div className="mb-3">
+        <AdminSearchInput value={search} onChange={setSearch} placeholder="Поиск по названию, описанию..." />
+      </div>
       <div className="space-y-2">
-        {abilities.map(a => {
+        {filtered.map(a => {
           const modCount = Object.keys(a.statModifiers || {}).length + Object.keys(a.statModifiersEx || {}).length;
           return (
             <div key={a.id} className="bg-card border border-border rounded-sm p-3 flex items-start gap-3">
@@ -416,6 +477,7 @@ export function AdminTabAbilities({ abilities, abilityForm, abilityEditing, abil
           );
         })}
         {abilities.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Умений пока нет</p>}
+        {abilities.length > 0 && filtered.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Ничего не найдено</p>}
       </div>
     </div>
   );
@@ -447,6 +509,17 @@ interface AdminTabSpecialStatsProps {
 const inputCls = 'w-full bg-background border border-border rounded-sm px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary';
 
 export function AdminTabSpecialStats({ specialStats, form, editing, loading, onFormChange, onSave, onEdit, onDelete, onCancelEdit }: AdminTabSpecialStatsProps) {
+  const [search, setSearch] = useState('');
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return specialStats;
+    return specialStats.filter(s =>
+      s.label.toLowerCase().includes(q) ||
+      s.key.toLowerCase().includes(q)
+    );
+  }, [specialStats, search]);
+
   return (
     <div className="max-w-xl">
       <div className="bg-card border border-border rounded-sm p-4 mb-4">
@@ -504,8 +577,12 @@ export function AdminTabSpecialStats({ specialStats, form, editing, loading, onF
         </div>
       </div>
 
+      <div className="mb-3">
+        <AdminSearchInput value={search} onChange={setSearch} placeholder="Поиск по названию, ключу..." />
+      </div>
+
       <div className="space-y-2">
-        {specialStats.map(s => (
+        {filtered.map(s => (
           <div key={s.id} className="bg-card border border-border rounded-sm p-3 flex items-center gap-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
@@ -525,6 +602,7 @@ export function AdminTabSpecialStats({ specialStats, form, editing, loading, onF
           </div>
         ))}
         {specialStats.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Особых характеристик пока нет</p>}
+        {specialStats.length > 0 && filtered.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Ничего не найдено</p>}
       </div>
     </div>
   );
