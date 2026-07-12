@@ -13,7 +13,9 @@ POST action=transfer_ownership — передать права главы дом
 POST action=add_video        — добавить ссылку на видео дома (YouTube/VK/Rutube/Twitch), без лимита (owner или admin)
 POST action=delete_video     — удалить видео дома (owner или admin)
 POST action=delete_photo     — удалить фото дома (owner или admin)
-POST action=upload_audio     — загрузить аудио дома, до 25 МБ (owner или admin)
+POST action=upload_audio_chunk — загрузить часть аудиофайла дома (файл передаётся кусками по ~2 МБ,
+                                чтобы уложиться в лимит размера запроса), до 25 МБ суммарно (owner или admin)
+POST action=finish_audio_upload — собрать части в единый аудиофайл дома и сохранить (owner или admin)
 POST action=delete_audio     — удалить аудио дома (owner или admin)
 POST action=award_points     — начислить баллы активности (только из других функций)
 POST action=set_member_role  — назначить роль участнику: diplomat/marshal/lord/knight (owner или admin)
@@ -899,43 +901,138 @@ def handle_delete_photo(body, user, conn):
     return ok({'ok': True})
 
 
-def handle_upload_audio(body, user, conn):
-    """POST action=upload_audio — загрузить аудио дома, до 25 МБ (owner или admin)."""
-    house_id = body.get('house_id')
-    if not house_id:
-        conn.close()
-        return err('house_id обязателен')
-    if not body.get('audio_file'):
-        conn.close()
-        return err('audio_file обязателен')
-
-    try:
-        house_id = int(house_id)
-    except (TypeError, ValueError):
-        conn.close()
-        return err('Некорректный house_id')
-
+def check_house_manage_rights(house_id, user, conn):
+    """Возвращает None если прав достаточно, иначе — готовый error-response."""
     with conn.cursor() as cur:
         cur.execute(f"SELECT owner_id FROM {SCHEMA}.houses WHERE id = %s", (house_id,))
         row = cur.fetchone()
         if not row:
-            conn.close()
             return err('Дом не найден', 404)
         if row[0] != user['id'] and not user['is_admin']:
-            conn.close()
             return err('Нет прав для загрузки аудио', 403)
+    return None
+
+
+def handle_upload_audio_chunk(body, user, conn):
+    """POST action=upload_audio_chunk — загрузить часть аудиофайла дома (owner или admin).
+    Файл передаётся кусками по ~2 МБ на стороне клиента, чтобы каждый отдельный запрос
+    укладывался в лимит размера тела запроса облачной функции (аудиофайлы целиком в него не помещаются)."""
+    house_id = body.get('house_id')
+    upload_id = (body.get('upload_id') or '').strip()
+    chunk_index = body.get('chunk_index')
+    chunk_data = body.get('chunk_data')
+
+    if not house_id:
+        conn.close()
+        return err('house_id обязателен')
+    if not upload_id:
+        conn.close()
+        return err('upload_id обязателен')
+    if chunk_index is None:
+        conn.close()
+        return err('chunk_index обязателен')
+    if not chunk_data:
+        conn.close()
+        return err('chunk_data обязателен')
 
     try:
-        audio_url = upload_file(
-            body['audio_file'],
-            body.get('audio_content_type', 'audio/mpeg'),
-            'house-audio',
-            ALLOWED_AUDIO_TYPES,
-            MAX_AUDIO_SIZE,
-        )
-    except ValueError as e:
+        house_id = int(house_id)
+        chunk_index = int(chunk_index)
+        uuid.UUID(upload_id)
+    except (TypeError, ValueError):
         conn.close()
-        return err(str(e))
+        return err('Некорректные параметры загрузки')
+
+    error = check_house_manage_rights(house_id, user, conn)
+    if error:
+        conn.close()
+        return error
+
+    if ',' in chunk_data:
+        chunk_data = chunk_data.split(',', 1)[1]
+    try:
+        chunk_bytes = base64.b64decode(chunk_data)
+    except Exception:
+        conn.close()
+        return err('Ошибка декодирования части файла')
+
+    with conn.cursor() as cur:
+        cur.execute(
+            f"SELECT COALESCE(SUM(length(chunk_data)), 0) FROM {SCHEMA}.house_audio_upload_chunks WHERE upload_id = %s",
+            (upload_id,)
+        )
+        total_so_far = cur.fetchone()[0]
+        if total_so_far + len(chunk_bytes) > MAX_AUDIO_SIZE:
+            conn.close()
+            mb = MAX_AUDIO_SIZE // (1024 * 1024)
+            return err(f'Аудио слишком большое (максимум {mb} МБ)')
+
+        cur.execute(
+            f"INSERT INTO {SCHEMA}.house_audio_upload_chunks (upload_id, house_id, chunk_index, chunk_data) "
+            f"VALUES (%s, %s, %s, %s)",
+            (upload_id, house_id, chunk_index, chunk_bytes)
+        )
+
+    conn.commit()
+    conn.close()
+    return ok({'ok': True})
+
+
+def handle_finish_audio_upload(body, user, conn):
+    """POST action=finish_audio_upload — собрать загруженные части в единый аудиофайл, сохранить
+    в хранилище и создать запись в БД (owner или admin)."""
+    house_id = body.get('house_id')
+    upload_id = (body.get('upload_id') or '').strip()
+    content_type = body.get('content_type', 'audio/mpeg')
+
+    if not house_id:
+        conn.close()
+        return err('house_id обязателен')
+    if not upload_id:
+        conn.close()
+        return err('upload_id обязателен')
+
+    try:
+        house_id = int(house_id)
+        uuid.UUID(upload_id)
+    except (TypeError, ValueError):
+        conn.close()
+        return err('Некорректные параметры загрузки')
+
+    if content_type not in ALLOWED_AUDIO_TYPES:
+        conn.close()
+        return err(f'Неподдерживаемый тип файла: {content_type}')
+
+    error = check_house_manage_rights(house_id, user, conn)
+    if error:
+        conn.close()
+        return error
+
+    with conn.cursor() as cur:
+        cur.execute(
+            f"SELECT chunk_data FROM {SCHEMA}.house_audio_upload_chunks "
+            f"WHERE upload_id = %s AND house_id = %s ORDER BY chunk_index ASC",
+            (upload_id, house_id)
+        )
+        rows = cur.fetchall()
+        if not rows:
+            conn.close()
+            return err('Части файла не найдены — загрузите файл заново')
+
+        file_bytes = b''.join(row[0].tobytes() if hasattr(row[0], 'tobytes') else bytes(row[0]) for row in rows)
+
+        if len(file_bytes) > MAX_AUDIO_SIZE:
+            conn.close()
+            mb = MAX_AUDIO_SIZE // (1024 * 1024)
+            return err(f'Аудио слишком большое (максимум {mb} МБ)')
+
+        ext = ALLOWED_AUDIO_TYPES[content_type]
+        filename = f"house-audio/{uuid.uuid4().hex}.{ext}"
+        s3 = get_s3()
+        s3.put_object(Bucket='files', Key=filename, Body=file_bytes, ContentType=content_type)
+        audio_url = cdn_url(filename)
+
+        cur.execute(f"DELETE FROM {SCHEMA}.house_audio_upload_chunks WHERE upload_id = %s", (upload_id,))
 
     title = (body.get('title') or '').strip()[:150]
 
@@ -1272,8 +1369,11 @@ def handler(event: dict, context) -> dict:
         if action == 'delete_photo':
             return handle_delete_photo(body, user, conn)
 
-        if action == 'upload_audio':
-            return handle_upload_audio(body, user, conn)
+        if action == 'upload_audio_chunk':
+            return handle_upload_audio_chunk(body, user, conn)
+
+        if action == 'finish_audio_upload':
+            return handle_finish_audio_upload(body, user, conn)
 
         if action == 'delete_audio':
             return handle_delete_audio(body, user, conn)

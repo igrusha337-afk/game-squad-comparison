@@ -264,8 +264,10 @@ export const housesApi = {
     request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'delete_video', video_id }) }),
   deletePhoto: (photo_id: number) =>
     request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'delete_photo', photo_id }) }),
-  uploadAudio: (house_id: number, data: { audio_file: string; audio_content_type: string; title?: string }) =>
-    request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'upload_audio', house_id, ...data }) }),
+  uploadAudioChunk: (house_id: number, data: { upload_id: string; chunk_index: number; chunk_data: string }) =>
+    request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'upload_audio_chunk', house_id, ...data }) }),
+  finishAudioUpload: (house_id: number, data: { upload_id: string; content_type: string; title?: string }) =>
+    request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'finish_audio_upload', house_id, ...data }) }),
   deleteAudio: (audio_id: number) =>
     request(URLS.housesApi, { method: 'POST', body: JSON.stringify({ action: 'delete_audio', audio_id }) }),
   setMemberRole: (house_id: number, member_id: number, role: string) =>

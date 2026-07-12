@@ -11,6 +11,7 @@ import { HOUSE_ROLES } from '@/lib/api';
 import { SOCIAL_META } from '@/data/socialMeta';
 import SocialIcon from '@/components/SocialIcon';
 import { getVideoEmbed } from '@/lib/videoEmbed';
+import { uploadFileInChunks } from '@/lib/chunkUpload';
 
 const SERVERS = [
   'EU1 Crystal Sea', 'EU2 Pantheon Warhall', 'EU3',
@@ -44,15 +45,6 @@ interface HouseDetail {
 }
 
 const ASSIGNABLE_ROLES = ['diplomat', 'marshal', 'lord', 'knight'] as const;
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 interface Props {
   houseId: number;
@@ -265,8 +257,11 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
     if (file.size > 25 * 1024 * 1024) { alert('Аудио должно быть не более 25 МБ'); return; }
     setUploadingAudio(true);
     try {
-      const base64 = await fileToBase64(file);
-      await housesApi.uploadAudio(houseId, { audio_file: base64, audio_content_type: file.type, title: file.name });
+      const uploadId = crypto.randomUUID();
+      await uploadFileInChunks(file, (chunkBase64, chunkIndex) =>
+        housesApi.uploadAudioChunk(houseId, { upload_id: uploadId, chunk_index: chunkIndex, chunk_data: chunkBase64 })
+      );
+      await housesApi.finishAudioUpload(houseId, { upload_id: uploadId, content_type: file.type, title: file.name });
       await load();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Ошибка загрузки');
