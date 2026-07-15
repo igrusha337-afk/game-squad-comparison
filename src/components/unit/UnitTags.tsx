@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { UnitStats, Ability, Trait, Formation } from '@/data/types';
 import Icon from '@/components/ui/icon';
+import { textToHtml } from '@/lib/richText';
 
 export const CLASS_ICONS: Record<string, string> = {
   'Пехота': 'Sword', 'Кавалерия': 'Zap', 'Стрелки': 'Crosshair', 'Осадные': 'Hammer',
@@ -234,9 +235,8 @@ export function GuideSection({ title, icon, blocks }: { title: string; icon: str
               <img src={block.content} alt="" className="w-full object-contain" style={{ display: 'block' }} />
             </div>
           ) : (
-            <p key={i} className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-              {block.content}
-            </p>
+            <div key={i} className="forum-content text-sm text-foreground leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: textToHtml(block.content) }} />
           )
         ))}
       </div>

@@ -3,6 +3,8 @@ import { GuideBlock } from '@/data/types';
 import { uploadApi } from '@/lib/api';
 import Icon from '@/components/ui/icon';
 import { resizeImageToBase64 } from '@/lib/imageResize';
+import RichEditor from '@/components/RichEditor';
+import { textToHtml } from '@/lib/richText';
 
 interface GuideEditorProps {
   label: string;
@@ -86,12 +88,11 @@ export default function GuideEditor({ label, value, onChange }: GuideEditorProps
             {/* Content */}
             <div className="flex-1 min-w-0">
               {block.type === 'text' ? (
-                <textarea
-                  value={block.content}
-                  onChange={e => updateBlock(i, e.target.value)}
+                <RichEditor
+                  value={textToHtml(block.content)}
+                  onChange={v => updateBlock(i, v)}
                   placeholder="Введите текст рекомендации..."
-                  rows={3}
-                  className="w-full bg-background border border-border rounded-sm px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                  minHeight={80}
                 />
               ) : (
                 <div className="relative">
