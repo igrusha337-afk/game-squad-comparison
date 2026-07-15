@@ -13,9 +13,10 @@ interface UnitDetailPageProps {
   onBack: () => void;
   onApplyTreaty?: (unitId: string, treatyId: string) => void;
   onRemoveTreaty?: (unitId: string, treatyId: string) => void;
+  onOpenMessages?: (userId: number, username: string) => void;
 }
 
-export default function UnitDetailPage({ unitId, appliedTreaties, onBack, onApplyTreaty, onRemoveTreaty }: UnitDetailPageProps) {
+export default function UnitDetailPage({ unitId, appliedTreaties, onBack, onApplyTreaty, onRemoveTreaty, onOpenMessages }: UnitDetailPageProps) {
   const { units } = useUnits();
   const { treaties, categories } = useTreaties();
   const { formations: allFormations } = useFormations();
@@ -79,7 +80,7 @@ export default function UnitDetailPage({ unitId, appliedTreaties, onBack, onAppl
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
-          <UnitHeader unit={unit} unitFormations={unitFormations} />
+          <UnitHeader unit={unit} unitFormations={unitFormations} onOpenMessages={onOpenMessages} />
           <UnitStatsPanel unit={unit} myTreaties={myTreatiesForStats} />
         </div>
 

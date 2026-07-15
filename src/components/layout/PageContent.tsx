@@ -79,6 +79,7 @@ export default function PageContent({
           onBack={() => onSetDetailUnitId(null)}
           onApplyTreaty={onApplyTreaty}
           onRemoveTreaty={onRemoveTreaty}
+          onOpenMessages={onOpenMessages}
         />
       ) : page === 'catalog' ? (
         <CatalogPage onSelectUnit={onSetDetailUnitId} onGoGuides={() => onNavigateTo('guides')} />

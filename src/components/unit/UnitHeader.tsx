@@ -6,6 +6,10 @@ import Icon from '@/components/ui/icon';
 import RoleTooltip from '@/components/RoleTooltip';
 import { CLASS_ICONS, TraitTag, FormationTag } from './UnitTags';
 
+// Аккаунт разработчика, куда уходят жалобы на ошибки в карточках отрядов
+const CONTACT_USER_ID = 2;
+const CONTACT_USERNAME = 'KOHTAKT';
+
 function getRoles(role: UnitRole | UnitRole[]): UnitRole[] {
   return Array.isArray(role) ? role : [role];
 }
@@ -13,9 +17,10 @@ function getRoles(role: UnitRole | UnitRole[]): UnitRole[] {
 interface UnitHeaderProps {
   unit: Unit;
   unitFormations: Formation[];
+  onOpenMessages?: (userId: number, username: string) => void;
 }
 
-export default function UnitHeader({ unit, unitFormations }: UnitHeaderProps) {
+export default function UnitHeader({ unit, unitFormations, onOpenMessages }: UnitHeaderProps) {
   const roles = getRoles(unit.role);
   const traits = unit.traits || [];
 
@@ -51,10 +56,19 @@ export default function UnitHeader({ unit, unitFormations }: UnitHeaderProps) {
         </div>
         <p className="text-sm text-foreground leading-relaxed mb-3">{unit.description}</p>
         {unit.lore && (
-          <div>
+          <div className="mb-4">
             <div className="text-[10px] text-muted-foreground uppercase tracking-widest mb-1">Хроника</div>
             <p className="text-xs text-muted-foreground italic leading-relaxed border-l-2 border-primary/30 pl-3">{unit.lore}</p>
           </div>
+        )}
+        {onOpenMessages && (
+          <button
+            onClick={() => onOpenMessages(CONTACT_USER_ID, CONTACT_USERNAME)}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+          >
+            <Icon name="MessageCircleWarning" size={13} />
+            Не согласен с какой либо информацией или обнаружил ошибку?
+          </button>
         )}
       </div>
 
