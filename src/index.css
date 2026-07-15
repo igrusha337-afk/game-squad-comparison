@@ -634,6 +634,10 @@
   }
 
   /* ══════════ RichEditor ══════════ */
+  .rich-editor {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
   .rich-editor:empty:before {
     content: attr(data-placeholder);
     color: hsl(var(--muted-foreground));
@@ -685,6 +689,10 @@
     text-decoration: underline;
   }
 
+  .forum-content {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
   .forum-content b,
   .forum-content strong {
     font-weight: 700;
