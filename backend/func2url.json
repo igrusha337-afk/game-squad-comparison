@@ -1,4 +1,5 @@
 {
+  "streamers-api": "https://functions.poehali.dev/7bc4b649-d323-4989-8c62-0063fa2d8923",
   "builds-api": "https://functions.poehali.dev/0f095936-748b-4a92-bdcb-14ee8f0ca92d",
   "reference-api": "https://functions.poehali.dev/be68749b-b171-4cda-b1ff-a6df6ad8ae7f",
   "houses-api": "https://functions.poehali.dev/b0631df5-a77f-4c46-8f6b-670ee8f4958c",

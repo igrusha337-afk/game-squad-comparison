@@ -1,0 +1,26 @@
+{
+  "tests": [
+    {
+      "name": "Список активных стримеров",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": { "streamers": [] },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "OPTIONS запрос (CORS)",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "admin_list без авторизации — доступ запрещён",
+      "method": "GET",
+      "path": "/?action=admin_list",
+      "expectedStatus": 403,
+      "expectedBody": { "error": "string" },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

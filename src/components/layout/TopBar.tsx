@@ -1,13 +1,15 @@
 import Icon from '@/components/ui/icon';
 import NotificationBell from '@/components/NotificationBell';
+import { useStreamers } from '@/hooks/useStreamers';
 
-type Page = 'catalog' | 'compare' | 'treaties' | 'houses' | 'forum' | 'guides' | 'game' | 'about' | 'auth' | 'admin' | 'profile' | 'messages';
+type Page = 'catalog' | 'compare' | 'treaties' | 'houses' | 'streamers' | 'forum' | 'guides' | 'game' | 'about' | 'auth' | 'admin' | 'profile' | 'messages';
 
 const NAV_ITEMS_LABELS: Partial<Record<Page, string>> = {
   catalog: 'Каталог',
   compare: 'Сравнение',
   treaties: 'Трактаты',
   houses: 'Дома CB',
+  streamers: 'Стримеры',
   forum: 'Форум',
   guides: 'Гайды',
   game: 'Неадекватная игра',
@@ -47,6 +49,8 @@ export default function TopBar({
     page === 'auth' ? 'Вход' :
     page === 'admin' ? 'Управление' :
     NAV_ITEMS_LABELS[page];
+
+  const { liveStreamers } = useStreamers();
 
   return (
     <header
@@ -126,6 +130,24 @@ export default function TopBar({
       </div>
 
       <div className="ml-auto flex items-center gap-2">
+        {liveStreamers.length > 0 && (
+          <button
+            onClick={() => onNavigate('streamers')}
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full transition-all"
+            style={{
+              background: 'hsl(0 72% 50% / 0.12)',
+              border: '1px solid hsl(0 72% 55% / 0.5)',
+              boxShadow: '0 0 10px hsl(0 72% 50% / 0.2)',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'hsl(0 72% 60% / 0.85)'; e.currentTarget.style.boxShadow = '0 0 14px hsl(0 72% 50% / 0.4)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'hsl(0 72% 55% / 0.5)'; e.currentTarget.style.boxShadow = '0 0 10px hsl(0 72% 50% / 0.2)'; }}
+          >
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'hsl(0 72% 55%)' }} />
+            <span style={{ fontFamily: 'Manrope, sans-serif', fontSize: '0.72rem', fontWeight: 700, color: 'hsl(0 72% 68%)', whiteSpace: 'nowrap' }}>
+              сейчас в эфире: {liveStreamers.length}
+            </span>
+          </button>
+        )}
         <a
           href="https://discord.gg/FYZC85MzES"
           target="_blank"

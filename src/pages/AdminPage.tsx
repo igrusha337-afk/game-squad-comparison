@@ -10,6 +10,7 @@ import { AdminTabRoles, AdminTabFormations, AdminTabTraits, AdminTabAbilities } 
 import { AdminTabStats, AdminTabModeration, SiteStats } from '@/components/admin/AdminTabStatsAndModeration';
 import { AdminTabTreatyCategories } from '@/components/admin/AdminTabTreatyCategories';
 import { AdminTabHouses } from '@/components/admin/AdminTabHouses';
+import { AdminTabStreamers } from '@/components/admin/AdminTabStreamers';
 
 import { useAdminUnits } from './admin/useAdminUnits';
 import { useAdminDictionaries } from './admin/useAdminDictionaries';
@@ -17,7 +18,7 @@ import { useAdminModeration } from './admin/useAdminModeration';
 import { AdminTabSpecialStats } from '@/components/admin/AdminTabDictionaries';
 import { useSpecialStats } from '@/hooks/useAppData';
 
-type AdminTab = 'stats' | 'units' | 'treaties' | 'treaty-categories' | 'roles' | 'formations' | 'traits' | 'abilities' | 'special-stats' | 'houses' | 'moderation';
+type AdminTab = 'stats' | 'units' | 'treaties' | 'treaty-categories' | 'roles' | 'formations' | 'traits' | 'abilities' | 'special-stats' | 'houses' | 'streamers' | 'moderation';
 
 const TAB_LABELS: Record<AdminTab, string> = {
   stats: 'Статистика',
@@ -30,6 +31,7 @@ const TAB_LABELS: Record<AdminTab, string> = {
   abilities: 'Умения',
   'special-stats': 'Особые статы',
   houses: 'Дома',
+  streamers: 'Стримеры',
   moderation: 'Публикации',
 };
 
@@ -75,7 +77,7 @@ export default function AdminPage() {
     );
   }
 
-  const allTabs: AdminTab[] = ['stats', 'units', 'treaties', 'treaty-categories', 'roles', 'formations', 'traits', 'abilities', 'special-stats', 'houses', 'moderation'];
+  const allTabs: AdminTab[] = ['stats', 'units', 'treaties', 'treaty-categories', 'roles', 'formations', 'traits', 'abilities', 'special-stats', 'houses', 'streamers', 'moderation'];
 
   return (
     <div className="max-w-5xl">
@@ -218,6 +220,8 @@ export default function AdminPage() {
       )}
 
       {tab === 'houses' && <AdminTabHouses />}
+
+      {tab === 'streamers' && <AdminTabStreamers />}
 
       {tab === 'moderation' && (
         <AdminTabModeration

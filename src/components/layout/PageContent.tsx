@@ -16,8 +16,9 @@ import GuidesPage from '@/pages/GuidesPage';
 import GuideDetailPage from '@/pages/GuideDetailPage';
 import HousesPage from '@/pages/HousesPage';
 import HouseDetailPage from '@/pages/HouseDetailPage';
+import StreamersPage from '@/pages/StreamersPage';
 
-type Page = 'catalog' | 'compare' | 'treaties' | 'houses' | 'forum' | 'guides' | 'game' | 'about' | 'auth' | 'admin' | 'profile' | 'messages';
+type Page = 'catalog' | 'compare' | 'treaties' | 'houses' | 'streamers' | 'forum' | 'guides' | 'game' | 'about' | 'auth' | 'admin' | 'profile' | 'messages';
 
 interface PageContentProps {
   page: Page;
@@ -83,7 +84,7 @@ export default function PageContent({
           onNavigateTo={onNavigateTo}
         />
       ) : page === 'catalog' ? (
-        <CatalogPage onSelectUnit={onSetDetailUnitId} onGoGuides={() => onNavigateTo('guides')} />
+        <CatalogPage onSelectUnit={onSetDetailUnitId} onGoGuides={() => onNavigateTo('guides')} onGoStreamers={() => onNavigateTo('streamers')} />
       ) : page === 'compare' ? (
         <ComparePage
           appliedTreaties={appliedTreaties}
@@ -111,6 +112,8 @@ export default function PageContent({
             onOpenProfile={onOpenPublicProfile}
           />
         )
+      ) : page === 'streamers' ? (
+        <StreamersPage />
       ) : page === 'forum' ? (
         forumTopicId ? (
           <TopicPage

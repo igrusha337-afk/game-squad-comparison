@@ -8,7 +8,7 @@ import PageContent from '@/components/layout/PageContent';
 import PWAInstallBanner from '@/components/PWAInstallBanner';
 import { CONTACT_USER_ID, CONTACT_USERNAME, PENDING_REPORT_ISSUE_KEY } from '@/components/ReportIssueButton';
 
-type Page = 'catalog' | 'compare' | 'treaties' | 'houses' | 'forum' | 'guides' | 'game' | 'about' | 'auth' | 'admin' | 'profile' | 'messages';
+type Page = 'catalog' | 'compare' | 'treaties' | 'houses' | 'streamers' | 'forum' | 'guides' | 'game' | 'about' | 'auth' | 'admin' | 'profile' | 'messages';
 
 export default function Index() {
   const { unitId: unitIdParam } = useParams<{ unitId?: string }>();

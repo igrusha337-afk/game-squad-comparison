@@ -3,6 +3,7 @@ import { useUnits } from '@/hooks/useAppData';
 import { UnitClass, Rarity } from '@/data/types';
 import UnitCard from '@/components/UnitCard';
 import Icon from '@/components/ui/icon';
+import { useStreamers } from '@/hooks/useStreamers';
 
 const CLASSES: UnitClass[] = ['Пехота', 'Кавалерия', 'Стрелки', 'Осадные'];
 const RARITIES: Rarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
@@ -24,10 +25,12 @@ const CLASS_META: Record<UnitClass, { icon: string; hue: string }> = {
 interface CatalogPageProps {
   onSelectUnit: (id: string) => void;
   onGoGuides?: () => void;
+  onGoStreamers?: () => void;
 }
 
-export default function CatalogPage({ onSelectUnit, onGoGuides }: CatalogPageProps) {
+export default function CatalogPage({ onSelectUnit, onGoGuides, onGoStreamers }: CatalogPageProps) {
   const { units: UNITS, loading } = useUnits();
+  const { liveStreamers } = useStreamers();
 
   const [search, setSearch] = useState('');
   const [classFilter, setClassFilter] = useState<UnitClass | ''>('');
@@ -102,6 +105,40 @@ export default function CatalogPage({ onSelectUnit, onGoGuides }: CatalogPagePro
 
   return (
     <div className="max-w-[1400px] mx-auto animate-fade-in">
+      {/* ═════ АКТИВНЫЕ СТРИМЫ ═════ */}
+      {liveStreamers.length > 0 && (
+        <button
+          onClick={onGoStreamers}
+          className="w-full mb-6 flex items-center gap-3 px-5 py-3.5 rounded-2xl transition-all text-left"
+          style={{
+            background: 'linear-gradient(90deg, hsl(0 72% 50% / 0.1), hsl(0 72% 50% / 0.03))',
+            border: '1px solid hsl(0 72% 55% / 0.4)',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'hsl(0 72% 60% / 0.7)'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'hsl(0 72% 55% / 0.4)'; }}
+        >
+          <span className="w-2 h-2 rounded-full animate-pulse flex-shrink-0" style={{ background: 'hsl(0 72% 55%)' }} />
+          <span style={{ fontFamily: 'Manrope, sans-serif', fontSize: '0.85rem', fontWeight: 700, color: 'hsl(0 72% 68%)' }}>
+            Сейчас в эфире:
+          </span>
+          <span className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+            {liveStreamers.slice(0, 5).map(s => (
+              <span key={s.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg"
+                style={{ background: 'hsl(222 20% 10%)', border: '1px solid hsl(222 14% 20%)' }}>
+                <Icon name="Twitch" size={11} style={{ color: 'hsl(262 60% 65%)' }} />
+                <span style={{ fontFamily: 'Manrope, sans-serif', fontSize: '0.78rem', color: 'hsl(38 18% 88%)' }}>{s.display_name}</span>
+              </span>
+            ))}
+            {liveStreamers.length > 5 && (
+              <span style={{ fontFamily: 'Manrope, sans-serif', fontSize: '0.78rem', color: 'hsl(222 8% 54%)' }}>
+                +{liveStreamers.length - 5} ещё
+              </span>
+            )}
+          </span>
+          <Icon name="ChevronRight" size={16} className="flex-shrink-0" style={{ color: 'hsl(0 72% 60%)' }} />
+        </button>
+      )}
+
       {/* ═════ HERO ═════ */}
       <section className="mb-10 relative">
         {/* Декоративные световые пятна */}

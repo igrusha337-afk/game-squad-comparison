@@ -14,6 +14,7 @@ const URLS = {
   messagesApi: 'https://functions.poehali.dev/9c322351-b8b6-4513-a2d3-b3658d79f8e0',
   guidesApi: 'https://functions.poehali.dev/7c42af4f-b3f5-4363-b971-9823b6d05f6c',
   housesApi: 'https://functions.poehali.dev/b0631df5-a77f-4c46-8f6b-670ee8f4958c',
+  streamersApi: 'https://functions.poehali.dev/7bc4b649-d323-4989-8c62-0063fa2d8923',
 };
 
 function getSessionId(): string {
@@ -303,4 +304,16 @@ export const buildsApi = {
     request(URLS.buildsApi, { method: 'POST', body: JSON.stringify({ action: 'create', ...data }) }),
   delete: (id: string) =>
     request(URLS.buildsApi, { method: 'POST', body: JSON.stringify({ action: 'delete', id }) }),
+};
+
+// Streamers
+export const streamersApi = {
+  list: () => request(URLS.streamersApi),
+  adminList: () => request(`${URLS.streamersApi}?action=admin_list`),
+  add: (twitch_login: string, display_name?: string) =>
+    request(URLS.streamersApi, { method: 'POST', body: JSON.stringify({ action: 'add', twitch_login, display_name }) }),
+  update: (id: number, data: { display_name?: string; is_active?: boolean; sort_order?: number }) =>
+    request(URLS.streamersApi, { method: 'POST', body: JSON.stringify({ action: 'update', id, ...data }) }),
+  delete: (id: number) =>
+    request(URLS.streamersApi, { method: 'POST', body: JSON.stringify({ action: 'delete', id }) }),
 };

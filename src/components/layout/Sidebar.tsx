@@ -1,13 +1,15 @@
 import Icon from '@/components/ui/icon';
 import { ShieldEmblem, OrnateDivider } from './SidebarDecorations';
+import SidebarStreamerWidget from './SidebarStreamerWidget';
 
-type Page = 'catalog' | 'compare' | 'treaties' | 'houses' | 'forum' | 'guides' | 'game' | 'about' | 'auth' | 'admin' | 'profile' | 'messages';
+type Page = 'catalog' | 'compare' | 'treaties' | 'houses' | 'streamers' | 'forum' | 'guides' | 'game' | 'about' | 'auth' | 'admin' | 'profile' | 'messages';
 
 const NAV_ITEMS: Array<{ id: Page; label: string; icon: string; adminOnly?: boolean; authOnly?: boolean; hidden?: boolean }> = [
   { id: 'catalog',  label: 'Каталог',    icon: 'LayoutGrid' },
   { id: 'compare',  label: 'Сравнение',  icon: 'Swords' },
   { id: 'treaties', label: 'Трактаты',   icon: 'ScrollText', adminOnly: true },
   { id: 'houses',   label: 'Дома CB',    icon: 'Shield' },
+  { id: 'streamers', label: 'Стримеры',  icon: 'Twitch' },
   { id: 'forum',    label: 'Форум',      icon: 'MessageSquare' },
   { id: 'guides',   label: 'Гайды',      icon: 'BookOpen' },
   { id: 'game',     label: 'Неадекватная игра', icon: 'Gamepad2', adminOnly: true },
@@ -147,6 +149,10 @@ export default function Sidebar({ page, detailUnitId, mobileMenuOpen, isAdmin, o
         </nav>
 
         <OrnateDivider />
+
+        <div className="px-3 pt-3">
+          <SidebarStreamerWidget onOpenStreamers={() => onNavigate('streamers')} />
+        </div>
 
         <div className="px-3 py-3 space-y-2">
           <div className="pt-3 flex items-center justify-between">
