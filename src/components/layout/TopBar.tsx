@@ -126,6 +126,44 @@ export default function TopBar({
       </div>
 
       <div className="ml-auto flex items-center gap-2">
+        <a
+          href="https://discord.gg/FYZC85MzES"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Сервер русского комьюнити с разработчиком"
+          className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full transition-all"
+          style={{
+            background: 'hsl(42 76% 50% / 0.1)',
+            border: '1px solid hsl(42 76% 50% / 0.45)',
+            boxShadow: '0 0 10px hsl(42 76% 50% / 0.15)',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'hsl(42 76% 58% / 0.8)'; e.currentTarget.style.boxShadow = '0 0 14px hsl(42 76% 50% / 0.35)'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'hsl(42 76% 50% / 0.45)'; e.currentTarget.style.boxShadow = '0 0 10px hsl(42 76% 50% / 0.15)'; }}
+        >
+          <img src="https://cdn.poehali.dev/projects/455c24fb-ce5d-4076-9543-1ca6ad6daa72/bucket/6dfc9754-ac15-4a12-9cdf-c66167a7fcec.png" alt="Discord" width={15} height={15} style={{ flexShrink: 0 }} />
+          <span className="hidden xl:inline" style={{ fontFamily: 'Manrope, sans-serif', fontSize: '0.72rem', fontWeight: 600, color: 'hsl(42 76% 72%)', whiteSpace: 'nowrap' }}>
+            Сервер комьюнити с разработчиком
+          </span>
+        </a>
+        <a
+          href="https://discord.gg/2BYD8mjRXb"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Сервер №1 с подкастами RU гильдий Conqueror's Blade"
+          className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full transition-all"
+          style={{
+            background: 'hsl(262 60% 60% / 0.1)',
+            border: '1px solid hsl(262 60% 60% / 0.45)',
+            boxShadow: '0 0 10px hsl(262 60% 60% / 0.15)',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'hsl(262 60% 68% / 0.8)'; e.currentTarget.style.boxShadow = '0 0 14px hsl(262 60% 60% / 0.35)'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'hsl(262 60% 60% / 0.45)'; e.currentTarget.style.boxShadow = '0 0 10px hsl(262 60% 60% / 0.15)'; }}
+        >
+          <img src="https://cdn.poehali.dev/projects/455c24fb-ce5d-4076-9543-1ca6ad6daa72/bucket/6dfc9754-ac15-4a12-9cdf-c66167a7fcec.png" alt="Discord" width={15} height={15} style={{ flexShrink: 0 }} />
+          <span className="hidden xl:inline" style={{ fontFamily: 'Manrope, sans-serif', fontSize: '0.72rem', fontWeight: 600, color: 'hsl(262 60% 75%)', whiteSpace: 'nowrap' }}>
+            Подкасты RU гильдий CB
+          </span>
+        </a>
         {user && (
           <>
             <button
