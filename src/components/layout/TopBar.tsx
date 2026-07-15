@@ -130,7 +130,7 @@ export default function TopBar({
           href="https://discord.gg/FYZC85MzES"
           target="_blank"
           rel="noopener noreferrer"
-          title="Сервер русского комьюнити с разработчиком"
+          title="RU сервер с разработчиком"
           className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full transition-all"
           style={{
             background: 'hsl(42 76% 50% / 0.1)',
@@ -142,7 +142,7 @@ export default function TopBar({
         >
           <img src="https://cdn.poehali.dev/projects/455c24fb-ce5d-4076-9543-1ca6ad6daa72/bucket/6dfc9754-ac15-4a12-9cdf-c66167a7fcec.png" alt="Discord" width={15} height={15} style={{ flexShrink: 0 }} />
           <span className="hidden xl:inline" style={{ fontFamily: 'Manrope, sans-serif', fontSize: '0.72rem', fontWeight: 600, color: 'hsl(42 76% 72%)', whiteSpace: 'nowrap' }}>
-            Сервер комьюнити с разработчиком
+            RU сервер с разработчиком
           </span>
         </a>
         <a
