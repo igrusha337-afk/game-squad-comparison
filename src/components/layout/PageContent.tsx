@@ -80,6 +80,7 @@ export default function PageContent({
           onApplyTreaty={onApplyTreaty}
           onRemoveTreaty={onRemoveTreaty}
           onOpenMessages={onOpenMessages}
+          onNavigateTo={onNavigateTo}
         />
       ) : page === 'catalog' ? (
         <CatalogPage onSelectUnit={onSetDetailUnitId} onGoGuides={() => onNavigateTo('guides')} />
@@ -101,6 +102,8 @@ export default function PageContent({
             houseId={houseDetailId}
             onBack={() => onSetHouseDetailId(null)}
             onOpenProfile={onOpenPublicProfile}
+            onOpenMessages={onOpenMessages}
+            onNavigateTo={onNavigateTo}
           />
         ) : (
           <HousesPage
@@ -115,6 +118,7 @@ export default function PageContent({
             onBack={() => onSetForumTopicId(null)}
             onOpenProfile={onOpenPublicProfile}
             onOpenMessages={onOpenMessages}
+            onNavigateTo={onNavigateTo}
           />
         ) : (
           <ForumPage
@@ -136,6 +140,8 @@ export default function PageContent({
             guideId={guideDetailId}
             onBack={() => onSetGuideDetailId(null)}
             onOpenProfile={onOpenPublicProfile}
+            onOpenMessages={onOpenMessages}
+            onNavigateTo={onNavigateTo}
           />
         ) : (
           <GuidesPage

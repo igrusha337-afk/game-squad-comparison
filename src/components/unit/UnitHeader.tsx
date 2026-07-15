@@ -4,11 +4,8 @@ import StarRating from '@/components/StarRating';
 import RarityBadge from '@/components/RarityBadge';
 import Icon from '@/components/ui/icon';
 import RoleTooltip from '@/components/RoleTooltip';
+import ReportIssueButton from '@/components/ReportIssueButton';
 import { CLASS_ICONS, TraitTag, FormationTag } from './UnitTags';
-
-// Аккаунт разработчика, куда уходят жалобы на ошибки в карточках отрядов
-const CONTACT_USER_ID = 2;
-const CONTACT_USERNAME = 'KOHTAKT';
 
 function getRoles(role: UnitRole | UnitRole[]): UnitRole[] {
   return Array.isArray(role) ? role : [role];
@@ -18,9 +15,10 @@ interface UnitHeaderProps {
   unit: Unit;
   unitFormations: Formation[];
   onOpenMessages?: (userId: number, username: string) => void;
+  onNavigateTo?: (page: 'auth') => void;
 }
 
-export default function UnitHeader({ unit, unitFormations, onOpenMessages }: UnitHeaderProps) {
+export default function UnitHeader({ unit, unitFormations, onOpenMessages, onNavigateTo }: UnitHeaderProps) {
   const roles = getRoles(unit.role);
   const traits = unit.traits || [];
 
@@ -61,15 +59,7 @@ export default function UnitHeader({ unit, unitFormations, onOpenMessages }: Uni
             <p className="text-xs text-muted-foreground italic leading-relaxed border-l-2 border-primary/30 pl-3">{unit.lore}</p>
           </div>
         )}
-        {onOpenMessages && (
-          <button
-            onClick={() => onOpenMessages(CONTACT_USER_ID, CONTACT_USERNAME)}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
-          >
-            <Icon name="MessageCircleWarning" size={13} />
-            Не согласен с какой либо информацией или обнаружил ошибку?
-          </button>
-        )}
+        <ReportIssueButton onOpenMessages={onOpenMessages} onNavigateTo={onNavigateTo} />
       </div>
 
       {/* Особенности */}

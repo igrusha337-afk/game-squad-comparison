@@ -12,6 +12,7 @@ import { SOCIAL_META } from '@/data/socialMeta';
 import SocialIcon from '@/components/SocialIcon';
 import { getVideoEmbed } from '@/lib/videoEmbed';
 import { uploadFileInChunks } from '@/lib/chunkUpload';
+import ReportIssueButton from '@/components/ReportIssueButton';
 
 const SERVERS = [
   'EU1 Crystal Sea', 'EU2 Pantheon Warhall', 'EU3',
@@ -50,9 +51,11 @@ interface Props {
   houseId: number;
   onBack: () => void;
   onOpenProfile?: (userId: number) => void;
+  onOpenMessages?: (userId: number, username: string) => void;
+  onNavigateTo?: (page: 'auth') => void;
 }
 
-export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Props) {
+export default function HouseDetailPage({ houseId, onBack, onOpenProfile, onOpenMessages, onNavigateTo }: Props) {
   const { user, updateUser } = useAuth();
   const [house, setHouse] = useState<HouseDetail | null>(null);
 
@@ -522,6 +525,9 @@ export default function HouseDetailPage({ houseId, onBack, onOpenProfile }: Prop
             </div>
           </div>
           )}
+        </div>
+        <div className="px-5 pb-4">
+          <ReportIssueButton onOpenMessages={onOpenMessages} onNavigateTo={onNavigateTo} />
         </div>
       </div>
 

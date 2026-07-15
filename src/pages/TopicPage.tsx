@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import RichEditor from '@/components/RichEditor';
 import UserAvatar from '@/components/UserAvatar';
 import Icon from '@/components/ui/icon';
+import ReportIssueButton from '@/components/ReportIssueButton';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 
 interface Topic {
@@ -32,9 +33,10 @@ interface TopicPageProps {
   onBack: () => void;
   onOpenProfile?: (userId: number) => void;
   onOpenMessages?: (userId: number, username: string) => void;
+  onNavigateTo?: (page: 'auth') => void;
 }
 
-export default function TopicPage({ topicId, onBack, onOpenProfile, onOpenMessages }: TopicPageProps) {
+export default function TopicPage({ topicId, onBack, onOpenProfile, onOpenMessages, onNavigateTo }: TopicPageProps) {
   const { user } = useAuth();
   const [topic, setTopic] = useState<Topic | null>(null);
 
@@ -215,6 +217,9 @@ export default function TopicPage({ topicId, onBack, onOpenProfile, onOpenMessag
             className="forum-content text-sm text-foreground leading-relaxed"
             dangerouslySetInnerHTML={{ __html: topic.content }}
           />
+          <div className="mt-3 pt-3 border-t border-border">
+            <ReportIssueButton onOpenMessages={onOpenMessages} onNavigateTo={onNavigateTo} />
+          </div>
         </div>
       )}
 

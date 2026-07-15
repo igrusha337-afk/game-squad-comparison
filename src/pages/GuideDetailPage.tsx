@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import RichEditor from '@/components/RichEditor';
 import UserAvatar from '@/components/UserAvatar';
 import Icon from '@/components/ui/icon';
+import ReportIssueButton from '@/components/ReportIssueButton';
 import { useDocumentMeta } from '@/hooks/useDocumentMeta';
 
 interface Guide {
@@ -43,9 +44,11 @@ interface Props {
   guideId: number;
   onBack: () => void;
   onOpenProfile?: (userId: number) => void;
+  onOpenMessages?: (userId: number, username: string) => void;
+  onNavigateTo?: (page: 'auth') => void;
 }
 
-export default function GuideDetailPage({ guideId, onBack, onOpenProfile }: Props) {
+export default function GuideDetailPage({ guideId, onBack, onOpenProfile, onOpenMessages, onNavigateTo }: Props) {
   const { user } = useAuth();
   const [guide, setGuide] = useState<Guide | null>(null);
 
@@ -229,6 +232,9 @@ export default function GuideDetailPage({ guideId, onBack, onOpenProfile }: Prop
                 <Icon name="ThumbsDown" size={15} /> {guide.dislikes}
               </button>
               {!user && <span className="text-xs" style={{ color: 'hsl(222 8% 48%)', fontFamily: 'Manrope, sans-serif' }}>Войдите, чтобы оценить</span>}
+            </div>
+            <div className="pt-3 mt-1">
+              <ReportIssueButton onOpenMessages={onOpenMessages} onNavigateTo={onNavigateTo} />
             </div>
           </div>
         </div>
