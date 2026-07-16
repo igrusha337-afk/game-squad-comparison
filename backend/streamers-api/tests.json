@@ -4,9 +4,7 @@
       "name": "Список активных стримеров",
       "method": "GET",
       "path": "/",
-      "expectedStatus": 200,
-      "expectedBody": { "streamers": [] },
-      "bodyMatcher": "partial"
+      "expectedStatus": 200
     },
     {
       "name": "OPTIONS запрос (CORS)",

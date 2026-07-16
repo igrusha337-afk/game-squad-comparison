@@ -1,9 +1,21 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { streamersApi } from '@/lib/api';
 
+export interface StreamerPlatform {
+  platform: 'twitch' | 'youtube';
+  url: string;
+  is_live: boolean;
+  title: string;
+  viewer_count: number;
+  thumbnail_url: string;
+  started_at: string;
+  game_name: string;
+}
+
 export interface Streamer {
   id: number;
   twitch_login: string;
+  youtube_channel_id: string;
   display_name: string;
   channel_url: string;
   avatar_url: string;
@@ -13,6 +25,7 @@ export interface Streamer {
   thumbnail_url: string;
   started_at: string;
   game_name: string;
+  platforms: StreamerPlatform[];
 }
 
 const POLL_INTERVAL = 15000;

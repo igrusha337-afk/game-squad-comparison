@@ -310,9 +310,9 @@ export const buildsApi = {
 export const streamersApi = {
   list: () => request(URLS.streamersApi),
   adminList: () => request(`${URLS.streamersApi}?action=admin_list`),
-  add: (twitch_login: string, display_name?: string) =>
-    request(URLS.streamersApi, { method: 'POST', body: JSON.stringify({ action: 'add', twitch_login, display_name }) }),
-  update: (id: number, data: { display_name?: string; is_active?: boolean; sort_order?: number }) =>
+  add: (twitch_login: string, display_name?: string, youtube_channel?: string) =>
+    request(URLS.streamersApi, { method: 'POST', body: JSON.stringify({ action: 'add', twitch_login, display_name, youtube_channel }) }),
+  update: (id: number, data: { display_name?: string; is_active?: boolean; sort_order?: number; youtube_channel?: string }) =>
     request(URLS.streamersApi, { method: 'POST', body: JSON.stringify({ action: 'update', id, ...data }) }),
   delete: (id: number) =>
     request(URLS.streamersApi, { method: 'POST', body: JSON.stringify({ action: 'delete', id }) }),

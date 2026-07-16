@@ -1,13 +1,14 @@
 """
-Streamers API: список Twitch-стримеров сообщества с live-статусом.
-GET  /                      — список активных стримеров с текущим live-статусом (кэш Twitch-данных на 60 сек)
+Streamers API: список Twitch/YouTube-стримеров сообщества с live-статусом.
+GET  /                      — список активных стримеров с текущим live-статусом (кэш Twitch/YouTube-данных на 60 сек)
 GET  /?action=admin_list    — полный список для админки (только admin)
-POST action=add             — добавить стримера по twitch_login (только admin)
-POST action=update          — изменить display_name/is_active/sort_order (только admin)
+POST action=add             — добавить стримера по twitch_login (+ опционально youtube_channel) (только admin)
+POST action=update          — изменить display_name/is_active/sort_order/youtube_channel (только admin)
 POST action=delete          — удалить стримера (только admin)
 """
 import json
 import os
+import re
 import time
 import urllib.request
 import urllib.parse
@@ -26,8 +27,16 @@ TWITCH_TOKEN_URL = 'https://id.twitch.tv/oauth2/token'
 TWITCH_STREAMS_URL = 'https://api.twitch.tv/helix/streams'
 TWITCH_USERS_URL = 'https://api.twitch.tv/helix/users'
 
+YOUTUBE_SEARCH_URL = 'https://www.googleapis.com/youtube/v3/search'
+YOUTUBE_VIDEOS_URL = 'https://www.googleapis.com/youtube/v3/videos'
+YOUTUBE_CHANNELS_URL = 'https://www.googleapis.com/youtube/v3/channels'
+
 # In-memory кэш живёт, пока функция "тёплая" между вызовами
-_cache = {'token': None, 'token_expires': 0, 'streams': None, 'streams_at': 0}
+_cache = {
+    'token': None, 'token_expires': 0,
+    'streams': None, 'streams_at': 0, 'streams_key': None,
+    'yt_streams': None, 'yt_streams_at': 0, 'yt_streams_key': None,
+}
 STREAMS_CACHE_TTL = 60
 
 
@@ -62,6 +71,8 @@ def get_user(session_id, conn):
             return {'id': row[0], 'username': row[1], 'is_admin': row[2]}
     return None
 
+
+# ───────────────────────── Twitch ─────────────────────────
 
 def get_twitch_token():
     now = time.time()
@@ -163,34 +174,188 @@ def fetch_avatars(logins):
     return result
 
 
+# ───────────────────────── YouTube ─────────────────────────
+
+def get_youtube_key():
+    return os.environ.get('YOUTUBE_API_KEY', '')
+
+
+def _yt_get(url, params):
+    key = get_youtube_key()
+    if not key:
+        return None
+    qs = urllib.parse.urlencode({**params, 'key': key})
+    req = urllib.request.Request(f'{url}?{qs}')
+    try:
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            return json.loads(resp.read())
+    except Exception:
+        return None
+
+
+def resolve_youtube_channel(raw):
+    """Принимает ссылку/handle/ID канала YouTube, возвращает channel_id или None."""
+    raw = (raw or '').strip()
+    if not raw:
+        return None
+
+    m = re.search(r'youtube\.com/channel/([\w-]+)', raw)
+    if m:
+        return m.group(1)
+
+    if re.fullmatch(r'UC[\w-]{20,}', raw):
+        return raw
+
+    m = re.search(r'youtube\.com/@([\w.-]+)', raw)
+    handle = m.group(1) if m else (raw[1:] if raw.startswith('@') else raw)
+    handle = handle.strip('/')
+
+    payload = _yt_get(YOUTUBE_CHANNELS_URL, {'part': 'id', 'forHandle': handle})
+    items = (payload or {}).get('items', [])
+    if items:
+        return items[0]['id']
+
+    payload = _yt_get(YOUTUBE_CHANNELS_URL, {'part': 'id', 'forUsername': handle})
+    items = (payload or {}).get('items', [])
+    if items:
+        return items[0]['id']
+
+    payload = _yt_get(YOUTUBE_SEARCH_URL, {'part': 'snippet', 'type': 'channel', 'q': handle, 'maxResults': 1})
+    items = (payload or {}).get('items', [])
+    if items:
+        return items[0]['snippet']['channelId']
+
+    return None
+
+
+def fetch_youtube_live(channel_ids):
+    """Возвращает { channel_id: {is_live, title, viewer_count, thumbnail_url, started_at, video_id} }."""
+    if not channel_ids:
+        return {}
+
+    now = time.time()
+    cache_key = tuple(sorted(channel_ids))
+    if _cache['yt_streams'] is not None and _cache.get('yt_streams_key') == cache_key and now - _cache['yt_streams_at'] < STREAMS_CACHE_TTL:
+        return _cache['yt_streams']
+
+    if not get_youtube_key():
+        return {}
+
+    result = {}
+    for cid in channel_ids[:25]:
+        payload = _yt_get(YOUTUBE_SEARCH_URL, {
+            'part': 'snippet', 'channelId': cid, 'eventType': 'live', 'type': 'video', 'maxResults': 1,
+        })
+        items = (payload or {}).get('items', [])
+        if not items:
+            continue
+        video_id = items[0]['id']['videoId']
+        snippet = items[0]['snippet']
+
+        details = _yt_get(YOUTUBE_VIDEOS_URL, {'part': 'liveStreamingDetails,snippet', 'id': video_id})
+        vitems = (details or {}).get('items', [])
+        live_details = vitems[0].get('liveStreamingDetails', {}) if vitems else {}
+        thumb = snippet.get('thumbnails', {}).get('high', {}).get('url', '')
+
+        result[cid] = {
+            'is_live': True,
+            'title': snippet.get('title', ''),
+            'viewer_count': int(live_details.get('concurrentViewers', 0) or 0),
+            'thumbnail_url': thumb,
+            'started_at': live_details.get('actualStartTime', ''),
+            'video_id': video_id,
+        }
+
+    _cache['yt_streams'] = result
+    _cache['yt_streams_key'] = cache_key
+    _cache['yt_streams_at'] = now
+    return result
+
+
+def fetch_youtube_channel_info(channel_ids):
+    """Возвращает { channel_id: {avatar_url, title} }."""
+    if not channel_ids:
+        return {}
+    payload = _yt_get(YOUTUBE_CHANNELS_URL, {'part': 'snippet', 'id': ','.join(channel_ids[:50])})
+    result = {}
+    for item in (payload or {}).get('items', []):
+        result[item['id']] = {
+            'avatar_url': item.get('snippet', {}).get('thumbnails', {}).get('default', {}).get('url', ''),
+            'title': item.get('snippet', {}).get('title', ''),
+        }
+    return result
+
+
+# ───────────────────────── Handlers ─────────────────────────
+
 def handle_list(conn):
     with conn.cursor() as cur:
         cur.execute(
-            f"SELECT id, twitch_login, display_name FROM {SCHEMA}.streamers "
+            f"SELECT id, twitch_login, display_name, youtube_channel_id FROM {SCHEMA}.streamers "
             f"WHERE is_active = true ORDER BY sort_order ASC, id ASC"
         )
         rows = cur.fetchall()
 
-    logins = [r[1] for r in rows]
-    live = fetch_live_status(logins)
-    avatars = fetch_avatars(logins) if logins else {}
+    logins = [r[1] for r in rows if r[1]]
+    yt_ids = [r[3] for r in rows if r[3]]
+
+    live_tw = fetch_live_status(logins)
+    avatars_tw = fetch_avatars(logins) if logins else {}
+    live_yt = fetch_youtube_live(yt_ids) if yt_ids else {}
+    info_yt = fetch_youtube_channel_info(yt_ids) if yt_ids else {}
 
     streamers = []
     for row in rows:
-        login_lower = row[1].lower()
-        info = live.get(login_lower, {})
+        sid, twitch_login, display_name, youtube_channel_id = row
+        platforms = []
+
+        if twitch_login:
+            tw_info = live_tw.get(twitch_login.lower(), {})
+            platforms.append({
+                'platform': 'twitch',
+                'url': f'https://twitch.tv/{twitch_login}',
+                'is_live': tw_info.get('is_live', False),
+                'title': tw_info.get('title', ''),
+                'viewer_count': tw_info.get('viewer_count', 0),
+                'thumbnail_url': tw_info.get('thumbnail_url', ''),
+                'started_at': tw_info.get('started_at', ''),
+                'game_name': tw_info.get('game_name', ''),
+            })
+
+        if youtube_channel_id:
+            yt_info = live_yt.get(youtube_channel_id, {})
+            platforms.append({
+                'platform': 'youtube',
+                'url': f'https://youtube.com/channel/{youtube_channel_id}',
+                'is_live': yt_info.get('is_live', False),
+                'title': yt_info.get('title', ''),
+                'viewer_count': yt_info.get('viewer_count', 0),
+                'thumbnail_url': yt_info.get('thumbnail_url', ''),
+                'started_at': yt_info.get('started_at', ''),
+                'game_name': '',
+            })
+
+        is_live = any(p['is_live'] for p in platforms)
+        primary = next((p for p in platforms if p['is_live']), platforms[0] if platforms else {})
+
+        avatar_url = avatars_tw.get(twitch_login.lower(), '') if twitch_login else ''
+        if not avatar_url and youtube_channel_id:
+            avatar_url = info_yt.get(youtube_channel_id, {}).get('avatar_url', '')
+
         streamers.append({
-            'id': row[0],
-            'twitch_login': row[1],
-            'display_name': row[2] or row[1],
-            'channel_url': f'https://twitch.tv/{row[1]}',
-            'avatar_url': avatars.get(login_lower, ''),
-            'is_live': info.get('is_live', False),
-            'title': info.get('title', ''),
-            'viewer_count': info.get('viewer_count', 0),
-            'thumbnail_url': info.get('thumbnail_url', ''),
-            'started_at': info.get('started_at', ''),
-            'game_name': info.get('game_name', ''),
+            'id': sid,
+            'twitch_login': twitch_login or '',
+            'youtube_channel_id': youtube_channel_id or '',
+            'display_name': display_name or twitch_login or (info_yt.get(youtube_channel_id, {}) or {}).get('title', ''),
+            'channel_url': primary.get('url', ''),
+            'avatar_url': avatar_url,
+            'is_live': is_live,
+            'title': primary.get('title', ''),
+            'viewer_count': primary.get('viewer_count', 0),
+            'thumbnail_url': primary.get('thumbnail_url', ''),
+            'started_at': primary.get('started_at', ''),
+            'game_name': primary.get('game_name', ''),
+            'platforms': platforms,
         })
 
     streamers.sort(key=lambda s: (not s['is_live'],))
@@ -200,7 +365,7 @@ def handle_list(conn):
 def handle_admin_list(conn):
     with conn.cursor() as cur:
         cur.execute(
-            f"SELECT id, twitch_login, display_name, is_active, sort_order, created_at "
+            f"SELECT id, twitch_login, display_name, is_active, sort_order, created_at, youtube_channel_id "
             f"FROM {SCHEMA}.streamers ORDER BY sort_order ASC, id ASC"
         )
         rows = cur.fetchall()
@@ -208,6 +373,7 @@ def handle_admin_list(conn):
         {
             'id': r[0], 'twitch_login': r[1], 'display_name': r[2],
             'is_active': r[3], 'sort_order': r[4], 'created_at': str(r[5]),
+            'youtube_channel_id': r[6] or '',
         } for r in rows
     ]})
 
@@ -217,18 +383,26 @@ def handle_add(body, user, conn):
     if not login:
         return err('Укажите логин канала Twitch')
     display_name = (body.get('display_name') or '').strip() or login
+
+    youtube_channel_id = None
+    youtube_raw = (body.get('youtube_channel') or '').strip()
+    if youtube_raw:
+        youtube_channel_id = resolve_youtube_channel(youtube_raw)
+        if not youtube_channel_id:
+            return err('Не удалось найти канал YouTube по указанной ссылке/ID')
+
     with conn.cursor() as cur:
         cur.execute(f"SELECT id FROM {SCHEMA}.streamers WHERE twitch_login = %s", (login,))
         if cur.fetchone():
             return err('Этот стример уже добавлен')
         cur.execute(
-            f"INSERT INTO {SCHEMA}.streamers (twitch_login, display_name, added_by) "
-            f"VALUES (%s, %s, %s) RETURNING id",
-            (login, display_name, user['id']),
+            f"INSERT INTO {SCHEMA}.streamers (twitch_login, display_name, added_by, youtube_channel_id) "
+            f"VALUES (%s, %s, %s, %s) RETURNING id",
+            (login, display_name, user['id'], youtube_channel_id),
         )
         new_id = cur.fetchone()[0]
         conn.commit()
-    return ok({'id': new_id})
+    return ok({'id': new_id, 'youtube_channel_id': youtube_channel_id})
 
 
 def handle_update(body, conn):
@@ -245,6 +419,17 @@ def handle_update(body, conn):
     if 'sort_order' in body:
         fields.append('sort_order = %s')
         values.append(int(body.get('sort_order') or 0))
+    if 'youtube_channel' in body:
+        youtube_raw = (body.get('youtube_channel') or '').strip()
+        if not youtube_raw:
+            fields.append('youtube_channel_id = %s')
+            values.append(None)
+        else:
+            resolved = resolve_youtube_channel(youtube_raw)
+            if not resolved:
+                return err('Не удалось найти канал YouTube по указанной ссылке/ID')
+            fields.append('youtube_channel_id = %s')
+            values.append(resolved)
     if not fields:
         return err('Нечего обновлять')
     values.append(streamer_id)
@@ -265,6 +450,7 @@ def handle_delete(body, conn):
 
 
 def handler(event: dict, context) -> dict:
+    """Список Twitch/YouTube-стримеров сообщества с live-статусом + управление ими из админки."""
     if event.get('httpMethod') == 'OPTIONS':
         return {'statusCode': 200, 'headers': CORS, 'body': ''}
 

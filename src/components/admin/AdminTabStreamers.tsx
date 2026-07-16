@@ -9,6 +9,7 @@ interface AdminStreamer {
   is_active: boolean;
   sort_order: number;
   created_at: string;
+  youtube_channel_id: string;
 }
 
 export function AdminTabStreamers() {
@@ -16,9 +17,12 @@ export function AdminTabStreamers() {
   const [loading, setLoading] = useState(true);
   const [login, setLogin] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [youtubeChannel, setYoutubeChannel] = useState('');
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [editingYoutubeId, setEditingYoutubeId] = useState<number | null>(null);
+  const [youtubeEditValue, setYoutubeEditValue] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -37,8 +41,8 @@ export function AdminTabStreamers() {
     if (!cleanLogin) { setError('Укажите логин или ссылку на канал'); return; }
     setAdding(true); setError('');
     try {
-      await streamersApi.add(cleanLogin, displayName.trim() || undefined);
-      setLogin(''); setDisplayName('');
+      await streamersApi.add(cleanLogin, displayName.trim() || undefined, youtubeChannel.trim() || undefined);
+      setLogin(''); setDisplayName(''); setYoutubeChannel('');
       await load();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Ошибка добавления');
@@ -68,10 +72,29 @@ export function AdminTabStreamers() {
     }
   };
 
+  const startEditYoutube = (s: AdminStreamer) => {
+    setEditingYoutubeId(s.id);
+    setYoutubeEditValue(s.youtube_channel_id || '');
+  };
+
+  const saveYoutube = async (s: AdminStreamer) => {
+    setBusyId(s.id);
+    try {
+      await streamersApi.update(s.id, { youtube_channel: youtubeEditValue.trim() });
+      await load();
+      setEditingYoutubeId(null);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Ошибка сохранения');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   return (
     <div className="max-w-xl">
       <p className="text-xs text-muted-foreground mb-4">
-        Добавляйте Twitch-каналы стримеров сообщества. Их живой статус подтягивается автоматически с Twitch
+        Добавляйте Twitch-каналы стримеров сообщества, а также их YouTube-канал (необязательно).
+        Живой статус подтягивается автоматически с Twitch и YouTube
         и отображается на сайте (шапка, сайдбар, каталог, страница «Стримеры»).
       </p>
 
@@ -93,6 +116,12 @@ export function AdminTabStreamers() {
               className="w-full bg-background border border-border rounded-sm px-3 py-2 text-sm text-foreground"
               placeholder="Необязательно — по умолчанию логин" />
           </div>
+          <div>
+            <label className="text-xs text-muted-foreground block mb-1.5">Канал YouTube (необязательно)</label>
+            <input type="text" value={youtubeChannel} onChange={e => setYoutubeChannel(e.target.value)}
+              className="w-full bg-background border border-border rounded-sm px-3 py-2 text-sm text-foreground"
+              placeholder="youtube.com/@username или ссылка на канал" />
+          </div>
           <button onClick={handleAdd} disabled={adding || !login.trim()}
             className="flex items-center gap-2 px-4 py-2 text-xs bg-primary text-primary-foreground rounded-sm hover:bg-primary/90 disabled:opacity-50">
             <Icon name={adding ? 'Loader' : 'Plus'} size={12} className={adding ? 'animate-spin' : ''} />
@@ -110,23 +139,51 @@ export function AdminTabStreamers() {
       ) : (
         <div className="space-y-2">
           {streamers.map(s => (
-            <div key={s.id} className="flex items-center gap-3 bg-card border border-border rounded-sm p-3">
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-foreground">{s.display_name}</div>
-                <a href={`https://twitch.tv/${s.twitch_login}`} target="_blank" rel="noopener noreferrer"
-                  className="text-xs text-muted-foreground hover:text-primary transition-colors">
-                  twitch.tv/{s.twitch_login}
-                </a>
+            <div key={s.id} className="bg-card border border-border rounded-sm p-3">
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-foreground">{s.display_name}</div>
+                  <a href={`https://twitch.tv/${s.twitch_login}`} target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-muted-foreground hover:text-primary transition-colors">
+                    twitch.tv/{s.twitch_login}
+                  </a>
+                </div>
+                <button onClick={() => handleToggleActive(s)} disabled={busyId === s.id}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-sm border transition-colors disabled:opacity-50 ${s.is_active ? 'border-green-500/40 text-green-500 hover:bg-green-500/10' : 'border-border text-muted-foreground hover:bg-muted'}`}>
+                  <Icon name={s.is_active ? 'Eye' : 'EyeOff'} size={11} />
+                  {s.is_active ? 'Показывается' : 'Скрыт'}
+                </button>
+                <button onClick={() => handleDelete(s)} disabled={busyId === s.id}
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs border border-destructive/40 text-destructive rounded-sm hover:bg-destructive/10 disabled:opacity-50">
+                  <Icon name="Trash2" size={11} /> Удалить
+                </button>
               </div>
-              <button onClick={() => handleToggleActive(s)} disabled={busyId === s.id}
-                className={`flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-sm border transition-colors disabled:opacity-50 ${s.is_active ? 'border-green-500/40 text-green-500 hover:bg-green-500/10' : 'border-border text-muted-foreground hover:bg-muted'}`}>
-                <Icon name={s.is_active ? 'Eye' : 'EyeOff'} size={11} />
-                {s.is_active ? 'Показывается' : 'Скрыт'}
-              </button>
-              <button onClick={() => handleDelete(s)} disabled={busyId === s.id}
-                className="flex items-center gap-1 px-2.5 py-1.5 text-xs border border-destructive/40 text-destructive rounded-sm hover:bg-destructive/10 disabled:opacity-50">
-                <Icon name="Trash2" size={11} /> Удалить
-              </button>
+
+              <div className="mt-2 pt-2 border-t border-border/50">
+                {editingYoutubeId === s.id ? (
+                  <div className="flex items-center gap-2">
+                    <input type="text" value={youtubeEditValue} onChange={e => setYoutubeEditValue(e.target.value)}
+                      className="flex-1 bg-background border border-border rounded-sm px-2.5 py-1.5 text-xs text-foreground"
+                      placeholder="youtube.com/@username или пусто, чтобы убрать" autoFocus />
+                    <button onClick={() => saveYoutube(s)} disabled={busyId === s.id}
+                      className="px-2.5 py-1.5 text-xs bg-primary text-primary-foreground rounded-sm hover:bg-primary/90 disabled:opacity-50">
+                      Сохранить
+                    </button>
+                    <button onClick={() => setEditingYoutubeId(null)}
+                      className="px-2.5 py-1.5 text-xs border border-border rounded-sm text-muted-foreground hover:bg-muted">
+                      Отмена
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => startEditYoutube(s)}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors">
+                    <Icon name="Youtube" size={12} />
+                    {s.youtube_channel_id
+                      ? <span>YouTube подключён · изменить</span>
+                      : <span>Добавить канал YouTube</span>}
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
