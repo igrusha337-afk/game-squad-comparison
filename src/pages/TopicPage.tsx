@@ -18,6 +18,12 @@ interface Post {
   author_id: number; author: string;
   is_hidden: boolean; created_at: string; updated_at: string;
   author_avatar?: string; author_house_name?: string;
+  reply_to_post_id?: number | null; reply_to_author?: string; reply_to_content?: string;
+}
+
+function stripHtml(html: string, maxLen = 120) {
+  const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return text.length > maxLen ? `${text.slice(0, maxLen)}…` : text;
 }
 
 function timeAgo(iso: string) {
@@ -49,6 +55,7 @@ export default function TopicPage({ topicId, onBack, onOpenProfile, onOpenMessag
   const [reply, setReply] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [replyError, setReplyError] = useState('');
+  const [replyTo, setReplyTo] = useState<Post | null>(null);
 
   const [editingTopic, setEditingTopic] = useState(false);
   const [editTitle, setEditTitle] = useState('');
@@ -76,14 +83,30 @@ export default function TopicPage({ topicId, onBack, onOpenProfile, onOpenMessag
     if (!stripped) { setReplyError('Напишите текст ответа'); return; }
     setSubmitting(true); setReplyError('');
     try {
-      await forumApi.createPost(topicId, reply);
+      await forumApi.createPost(topicId, reply, replyTo?.id);
       setReply('');
+      setReplyTo(null);
       await load();
     } catch (err: unknown) {
       setReplyError(err instanceof Error ? err.message : 'Ошибка');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleReplyClick = (post: Post) => {
+    setReplyTo(post);
+    requestAnimationFrame(() => {
+      document.getElementById('reply-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  };
+
+  const scrollToPost = (postId: number) => {
+    const el = document.getElementById(`post-${postId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('forum-post-highlight');
+    setTimeout(() => el.classList.remove('forum-post-highlight'), 1500);
   };
 
   const handleEditTopic = async () => {
@@ -237,8 +260,8 @@ export default function TopicPage({ topicId, onBack, onOpenProfile, onOpenMessag
           const canEdit = user && (user.id === post.author_id || user.is_admin);
           const isEditing = editingPost === post.id;
           return (
-            <div key={post.id}
-              className="bg-card border border-border rounded-sm p-4 group">
+            <div key={post.id} id={`post-${post.id}`}
+              className="bg-card border border-border rounded-sm p-4 group scroll-mt-4">
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 cursor-pointer" onClick={() => onOpenProfile?.(post.author_id)}>
                   <UserAvatar username={post.author} avatarUrl={post.author_avatar} size={32} />
@@ -257,6 +280,13 @@ export default function TopicPage({ topicId, onBack, onOpenProfile, onOpenMessag
                       <span className="text-[10px] text-muted-foreground/40">#{idx + 1}</span>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {canReply && !isEditing && (
+                        <button onClick={() => handleReplyClick(post)}
+                          className="p-1 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                          title="Ответить">
+                          <Icon name="Reply" size={12} />
+                        </button>
+                      )}
                       {canEdit && !isEditing && (
                         <button onClick={() => { setEditingPost(post.id); setEditPostContent(post.content); }}
                           className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
@@ -272,6 +302,16 @@ export default function TopicPage({ topicId, onBack, onOpenProfile, onOpenMessag
                       )}
                     </div>
                   </div>
+                  {post.reply_to_post_id && (
+                    <button
+                      onClick={() => scrollToPost(post.reply_to_post_id!)}
+                      className="w-full text-left mb-2 pl-2.5 py-1 border-l-2 rounded-sm text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors truncate"
+                      style={{ borderColor: 'hsl(42 76% 58% / 0.5)' }}
+                    >
+                      <span className="font-medium" style={{ color: 'hsl(42 76% 58%)' }}>{post.reply_to_author || 'Удалено'}</span>
+                      {post.reply_to_content && <span>: {stripHtml(post.reply_to_content, 80)}</span>}
+                    </button>
+                  )}
                   {isEditing ? (
                     <div>
                       <RichEditor value={editPostContent} onChange={setEditPostContent} minHeight={80} />
@@ -297,7 +337,7 @@ export default function TopicPage({ topicId, onBack, onOpenProfile, onOpenMessag
 
       {/* Форма ответа */}
       {canReply ? (
-        <div className="bg-card border border-border rounded-sm p-5">
+        <div id="reply-form" className="bg-card border border-border rounded-sm p-5 scroll-mt-4">
           <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
             <Icon name="Reply" size={14} className="text-primary" /> Написать ответ
           </h3>
@@ -305,6 +345,20 @@ export default function TopicPage({ topicId, onBack, onOpenProfile, onOpenMessag
             {replyError && (
               <div className="p-2 bg-destructive/10 border border-destructive/30 text-destructive text-xs rounded-sm">
                 {replyError}
+              </div>
+            )}
+            {replyTo && (
+              <div className="flex items-start justify-between gap-2 pl-2.5 py-1.5 pr-2 border-l-2 rounded-sm text-xs bg-muted/40"
+                style={{ borderColor: 'hsl(42 76% 58% / 0.5)' }}>
+                <div className="min-w-0">
+                  <span className="text-muted-foreground">Ответ на </span>
+                  <span className="font-medium" style={{ color: 'hsl(42 76% 58%)' }}>{replyTo.author}</span>
+                  <div className="text-muted-foreground truncate">{stripHtml(replyTo.content, 100)}</div>
+                </div>
+                <button type="button" onClick={() => setReplyTo(null)}
+                  className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex-shrink-0">
+                  <Icon name="X" size={13} />
+                </button>
               </div>
             )}
             <RichEditor value={reply} onChange={setReply} placeholder="Ваш ответ..." minHeight={120} />

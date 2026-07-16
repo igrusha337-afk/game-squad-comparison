@@ -81,8 +81,8 @@ export const forumApi = {
   getTopic: (id: number) => request(`${URLS.forum}?action=topic&id=${id}`),
   createTopic: (title: string, content: string, cover_file?: string, cover_content_type?: string) =>
     request(URLS.forum, { method: 'POST', body: JSON.stringify({ action: 'create_topic', title, content, ...(cover_file ? { cover_file, cover_content_type } : {}) }) }),
-  createPost: (topic_id: number, content: string) =>
-    request(URLS.forum, { method: 'POST', body: JSON.stringify({ action: 'create_post', topic_id, content }) }),
+  createPost: (topic_id: number, content: string, reply_to_post_id?: number) =>
+    request(URLS.forum, { method: 'POST', body: JSON.stringify({ action: 'create_post', topic_id, content, ...(reply_to_post_id ? { reply_to_post_id } : {}) }) }),
   editTopic: (topic_id: number, title: string, content: string) =>
     request(URLS.forum, { method: 'POST', body: JSON.stringify({ action: 'edit_topic', topic_id, title, content }) }),
   editPost: (post_id: number, content: string) =>

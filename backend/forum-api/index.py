@@ -113,6 +113,9 @@ def fmt_post(row):
         'is_hidden': row[5], 'created_at': str(row[6]), 'updated_at': str(row[7]),
         'author_avatar': row[8] if len(row) > 8 else '',
         'author_house_name': row[9] if len(row) > 9 else '',
+        'reply_to_post_id': row[10] if len(row) > 10 else None,
+        'reply_to_author': row[11] if len(row) > 11 else '',
+        'reply_to_content': row[12] if len(row) > 12 else '',
     }
 
 
@@ -197,9 +200,12 @@ def handler(event: dict, context) -> dict:
                 return resp({'error': 'Тема не найдена'}, 404)
             cur.execute(
                 f"""SELECT p.id, p.topic_id, p.content, p.author_id, u.username,
-                       p.is_hidden, p.created_at, p.updated_at, u.avatar_url, u.house_name
+                       p.is_hidden, p.created_at, p.updated_at, u.avatar_url, u.house_name,
+                       p.reply_to_post_id, ru.username, rp.content
                     FROM {SCHEMA}.forum_posts p
                     JOIN {SCHEMA}.users u ON u.id = p.author_id
+                    LEFT JOIN {SCHEMA}.forum_posts rp ON rp.id = p.reply_to_post_id
+                    LEFT JOIN {SCHEMA}.users ru ON ru.id = rp.author_id
                     WHERE p.topic_id = %s AND p.is_hidden = false
                     ORDER BY p.created_at ASC""", (topic_id,)
             )
@@ -270,6 +276,8 @@ def handler(event: dict, context) -> dict:
     if action == 'create_post':
         topic_id = int(body.get('topic_id', 0))
         content = body.get('content', '').strip()
+        reply_to_post_id = body.get('reply_to_post_id')
+        reply_to_post_id = int(reply_to_post_id) if reply_to_post_id else None
         if not content:
             conn.close()
             return resp({'error': 'Напишите текст ответа'}, 400)
@@ -286,18 +294,38 @@ def handler(event: dict, context) -> dict:
             if is_locked and not user['is_admin']:
                 conn.close()
                 return resp({'error': 'Тема закрыта для ответов'}, 403)
+            reply_author_id = None
+            if reply_to_post_id:
+                cur.execute(
+                    f"SELECT author_id FROM {SCHEMA}.forum_posts WHERE id = %s AND topic_id = %s",
+                    (reply_to_post_id, topic_id)
+                )
+                rrow = cur.fetchone()
+                if not rrow:
+                    conn.close()
+                    return resp({'error': 'Сообщение для ответа не найдено'}, 404)
+                reply_author_id = rrow[0]
             cur.execute(
-                f"INSERT INTO {SCHEMA}.forum_posts (topic_id, content, author_id) VALUES (%s, %s, %s) RETURNING id",
-                (topic_id, content, user['id'])
+                f"INSERT INTO {SCHEMA}.forum_posts (topic_id, content, author_id, reply_to_post_id) VALUES (%s, %s, %s, %s) RETURNING id",
+                (topic_id, content, user['id'], reply_to_post_id)
             )
             post_id = cur.fetchone()[0]
             cur.execute(f"UPDATE {SCHEMA}.forum_topics SET updated_at = now() WHERE id = %s", (topic_id,))
+            notified_ids = set()
             # Уведомление автору темы (если ответил не он сам)
             if topic_author_id != user['id']:
                 msg = f"{user['username']} ответил в теме «{topic_title[:60]}»"
                 cur.execute(
                     f"INSERT INTO {SCHEMA}.notifications (user_id, message, link_topic_id) VALUES (%s, %s, %s)",
                     (topic_author_id, msg, topic_id)
+                )
+                notified_ids.add(topic_author_id)
+            # Уведомление автору поста, на который ответили
+            if reply_author_id and reply_author_id != user['id'] and reply_author_id not in notified_ids:
+                msg = f"{user['username']} ответил на ваше сообщение в теме «{topic_title[:60]}»"
+                cur.execute(
+                    f"INSERT INTO {SCHEMA}.notifications (user_id, message, link_topic_id) VALUES (%s, %s, %s)",
+                    (reply_author_id, msg, topic_id)
                 )
             conn.commit()
         award_and_refresh(conn, user['id'], 'create_post', 5, post_id)
