@@ -171,7 +171,7 @@ export default function TopBar({
           href="https://discord.gg/2BYD8mjRXb"
           target="_blank"
           rel="noopener noreferrer"
-          title="Сервер №1 с подкастами RU гильдий Conqueror's Blade"
+          title="Подкасты RU гильдий CB"
           className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full transition-all"
           style={{
             background: 'hsl(262 60% 60% / 0.1)',
