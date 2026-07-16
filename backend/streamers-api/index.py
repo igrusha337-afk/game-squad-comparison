@@ -150,7 +150,7 @@ def fetch_live_status(logins):
 
 
 def fetch_avatars(logins):
-    """Подтягивает profile_image_url для указанных логинов (без кэша, только при необходимости)."""
+    """Подтягивает profile_image_url и offline_image_url для указанных логинов."""
     if not logins:
         return {}
     token = get_twitch_token()
@@ -170,7 +170,10 @@ def fetch_avatars(logins):
     result = {}
     for u in payload.get('data', []):
         login = (u.get('login') or '').lower()
-        result[login] = u.get('profile_image_url', '')
+        result[login] = {
+            'avatar_url': u.get('profile_image_url', ''),
+            'offline_image_url': u.get('offline_image_url', ''),
+        }
     return result
 
 
@@ -273,16 +276,35 @@ def fetch_youtube_live(channel_ids):
 
 
 def fetch_youtube_channel_info(channel_ids):
-    """Возвращает { channel_id: {avatar_url, title} }."""
+    """Возвращает { channel_id: {avatar_url, title, banner_url} }."""
     if not channel_ids:
         return {}
-    payload = _yt_get(YOUTUBE_CHANNELS_URL, {'part': 'snippet', 'id': ','.join(channel_ids[:50])})
+    payload = _yt_get(YOUTUBE_CHANNELS_URL, {'part': 'snippet,brandingSettings', 'id': ','.join(channel_ids[:50])})
     result = {}
     for item in (payload or {}).get('items', []):
+        banner = item.get('brandingSettings', {}).get('image', {}).get('bannerExternalUrl', '')
         result[item['id']] = {
             'avatar_url': item.get('snippet', {}).get('thumbnails', {}).get('default', {}).get('url', ''),
             'title': item.get('snippet', {}).get('title', ''),
+            'banner_url': f'{banner}=w1280-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj' if banner else '',
         }
+    return result
+
+
+def fetch_youtube_last_video(channel_ids):
+    """Возвращает { channel_id: thumbnail_url } последнего загруженного видео (для офлайн-превью)."""
+    if not channel_ids or not get_youtube_key():
+        return {}
+    result = {}
+    for cid in channel_ids[:25]:
+        payload = _yt_get(YOUTUBE_SEARCH_URL, {
+            'part': 'snippet', 'channelId': cid, 'order': 'date', 'type': 'video', 'maxResults': 1,
+        })
+        items = (payload or {}).get('items', [])
+        if not items:
+            continue
+        thumbs = items[0].get('snippet', {}).get('thumbnails', {})
+        result[cid] = thumbs.get('high', {}).get('url', '') or thumbs.get('default', {}).get('url', '')
     return result
 
 
@@ -303,11 +325,13 @@ def handle_list(conn):
     avatars_tw = fetch_avatars(logins) if logins else {}
     live_yt = fetch_youtube_live(yt_ids) if yt_ids else {}
     info_yt = fetch_youtube_channel_info(yt_ids) if yt_ids else {}
+    last_video_yt = fetch_youtube_last_video(yt_ids) if yt_ids else {}
 
     streamers = []
     for row in rows:
         sid, twitch_login, display_name, youtube_channel_id = row
         platforms = []
+        tw_data = avatars_tw.get(twitch_login.lower(), {}) if twitch_login else {}
 
         if twitch_login:
             tw_info = live_tw.get(twitch_login.lower(), {})
@@ -318,12 +342,14 @@ def handle_list(conn):
                 'title': tw_info.get('title', ''),
                 'viewer_count': tw_info.get('viewer_count', 0),
                 'thumbnail_url': tw_info.get('thumbnail_url', ''),
+                'offline_thumbnail_url': tw_data.get('offline_image_url', ''),
                 'started_at': tw_info.get('started_at', ''),
                 'game_name': tw_info.get('game_name', ''),
             })
 
         if youtube_channel_id:
             yt_info = live_yt.get(youtube_channel_id, {})
+            yt_channel = info_yt.get(youtube_channel_id, {})
             platforms.append({
                 'platform': 'youtube',
                 'url': f'https://youtube.com/channel/{youtube_channel_id}',
@@ -331,14 +357,16 @@ def handle_list(conn):
                 'title': yt_info.get('title', ''),
                 'viewer_count': yt_info.get('viewer_count', 0),
                 'thumbnail_url': yt_info.get('thumbnail_url', ''),
+                'offline_thumbnail_url': last_video_yt.get(youtube_channel_id, '') or yt_channel.get('banner_url', ''),
                 'started_at': yt_info.get('started_at', ''),
                 'game_name': '',
             })
 
         is_live = any(p['is_live'] for p in platforms)
         primary = next((p for p in platforms if p['is_live']), platforms[0] if platforms else {})
+        offline_thumb = primary.get('offline_thumbnail_url', '') if primary else ''
 
-        avatar_url = avatars_tw.get(twitch_login.lower(), '') if twitch_login else ''
+        avatar_url = tw_data.get('avatar_url', '')
         if not avatar_url and youtube_channel_id:
             avatar_url = info_yt.get(youtube_channel_id, {}).get('avatar_url', '')
 
@@ -353,6 +381,7 @@ def handle_list(conn):
             'title': primary.get('title', ''),
             'viewer_count': primary.get('viewer_count', 0),
             'thumbnail_url': primary.get('thumbnail_url', ''),
+            'offline_thumbnail_url': offline_thumb,
             'started_at': primary.get('started_at', ''),
             'game_name': primary.get('game_name', ''),
             'platforms': platforms,

@@ -53,20 +53,19 @@ export default function StreamersPage() {
               }}
             >
               <a href={s.channel_url} target="_blank" rel="noopener noreferrer" className="block">
-                <div
-                  className="relative aspect-video"
-                  style={
-                    s.is_live && s.thumbnail_url
-                      ? { background: 'hsl(222 20% 12%)' }
-                      : {
-                          background: 'radial-gradient(circle at 30% 25%, hsl(42 60% 22% / 0.5), transparent 55%), linear-gradient(135deg, hsl(222 24% 14%) 0%, hsl(222 22% 9%) 60%, hsl(262 30% 12%) 100%)',
-                        }
-                  }
-                >
+                <div className="relative aspect-video" style={{ background: 'hsl(222 20% 12%)' }}>
                   {s.is_live && s.thumbnail_url ? (
                     <img src={s.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                  ) : s.offline_thumbnail_url ? (
+                    <>
+                      <img src={s.offline_thumbnail_url} alt="" className="w-full h-full object-cover opacity-50" />
+                      <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, hsl(222 20% 6% / 0.35), hsl(222 20% 6% / 0.75))' }} />
+                    </>
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center">
+                    <div
+                      className="w-full h-full flex items-center justify-center"
+                      style={{ background: 'radial-gradient(circle at 30% 25%, hsl(42 60% 22% / 0.5), transparent 55%), linear-gradient(135deg, hsl(222 24% 14%) 0%, hsl(222 22% 9%) 60%, hsl(262 30% 12%) 100%)' }}
+                    >
                       <Icon name="Twitch" size={36} style={{ color: 'hsl(42 60% 60% / 0.25)' }} />
                     </div>
                   )}

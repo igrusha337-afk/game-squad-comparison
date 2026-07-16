@@ -8,6 +8,7 @@ export interface StreamerPlatform {
   title: string;
   viewer_count: number;
   thumbnail_url: string;
+  offline_thumbnail_url: string;
   started_at: string;
   game_name: string;
 }
@@ -23,6 +24,7 @@ export interface Streamer {
   title: string;
   viewer_count: number;
   thumbnail_url: string;
+  offline_thumbnail_url: string;
   started_at: string;
   game_name: string;
   platforms: StreamerPlatform[];
