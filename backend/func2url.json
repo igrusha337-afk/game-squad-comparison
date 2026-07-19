@@ -1,16 +1,3 @@
 {
-  "streamers-api": "https://functions.poehali.dev/7bc4b649-d323-4989-8c62-0063fa2d8923",
-  "builds-api": "https://functions.poehali.dev/0f095936-748b-4a92-bdcb-14ee8f0ca92d",
-  "reference-api": "https://functions.poehali.dev/be68749b-b171-4cda-b1ff-a6df6ad8ae7f",
-  "houses-api": "https://functions.poehali.dev/b0631df5-a77f-4c46-8f6b-670ee8f4958c",
-  "guides-api": "https://functions.poehali.dev/7c42af4f-b3f5-4363-b971-9823b6d05f6c",
-  "stats-api": "https://functions.poehali.dev/702bf411-49ba-4d48-b8ae-b79614b4a03b",
-  "messages-api": "https://functions.poehali.dev/9c322351-b8b6-4513-a2d3-b3658d79f8e0",
-  "profile-api": "https://functions.poehali.dev/d236c13e-b58c-46b9-b37c-4f4fab797124",
-  "game-api": "https://functions.poehali.dev/23edd385-7e13-41cb-a5d2-0a5cc4b4b5f7",
-  "forum-api": "https://functions.poehali.dev/914f3bd8-b9e4-4dfa-b16a-e3dda3710d6e",
-  "upload": "https://functions.poehali.dev/26151075-4ef3-4b29-8d16-c82a04dd0e83",
-  "treaties-api": "https://functions.poehali.dev/c9428367-4953-41ff-9034-681a2f9d5d89",
-  "units-api": "https://functions.poehali.dev/1332b379-06bb-41c1-83f8-e8bc6369fd8e",
-  "auth": "https://functions.poehali.dev/23d99d84-1616-4b50-9313-b88ca1a4a272"
+  "streamers-api": "https://functions.poehali.dev/7bc4b649-d323-4989-8c62-0063fa2d8923"
 }

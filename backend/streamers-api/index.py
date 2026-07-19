@@ -1,6 +1,7 @@
 """
 Streamers API: список Twitch/YouTube-стримеров сообщества с live-статусом.
-GET  /                      — список активных стримеров с текущим live-статусом (кэш Twitch/YouTube-данных на 60 сек)
+GET  /                      — список активных стримеров с текущим live-статусом
+                               (кэш live-статуса 60 сек, кэш аватарок/баннеров/превью 10 мин)
 GET  /?action=admin_list    — полный список для админки (только admin)
 POST action=add             — добавить стримера по twitch_login (+ опционально youtube_channel) (только admin)
 POST action=update          — изменить display_name/is_active/sort_order/youtube_channel (только admin)
@@ -36,8 +37,14 @@ _cache = {
     'token': None, 'token_expires': 0,
     'streams': None, 'streams_at': 0, 'streams_key': None,
     'yt_streams': None, 'yt_streams_at': 0, 'yt_streams_key': None,
+    'avatars': None, 'avatars_at': 0, 'avatars_key': None,
+    'yt_info': None, 'yt_info_at': 0, 'yt_info_key': None,
+    'yt_last_video': None, 'yt_last_video_at': 0, 'yt_last_video_key': None,
 }
 STREAMS_CACHE_TTL = 60
+# Аватарки/баннеры/превью последних видео меняются редко — кэшируем дольше,
+# чтобы не дёргать Twitch/YouTube на каждый опрос клиента (экономия вычислительного времени)
+META_CACHE_TTL = 600
 
 
 def ok(data, status=200):
@@ -150,9 +157,14 @@ def fetch_live_status(logins):
 
 
 def fetch_avatars(logins):
-    """Подтягивает profile_image_url и offline_image_url для указанных логинов."""
+    """Подтягивает profile_image_url и offline_image_url для указанных логинов (кэш 10 мин)."""
     if not logins:
         return {}
+    now = time.time()
+    cache_key = tuple(sorted(logins))
+    if _cache['avatars'] is not None and _cache.get('avatars_key') == cache_key and now - _cache['avatars_at'] < META_CACHE_TTL:
+        return _cache['avatars']
+
     token = get_twitch_token()
     client_id = os.environ.get('TWITCH_CLIENT_ID', '')
     if not token or not client_id:
@@ -174,6 +186,9 @@ def fetch_avatars(logins):
             'avatar_url': u.get('profile_image_url', ''),
             'offline_image_url': u.get('offline_image_url', ''),
         }
+    _cache['avatars'] = result
+    _cache['avatars_key'] = cache_key
+    _cache['avatars_at'] = now
     return result
 
 
@@ -276,9 +291,14 @@ def fetch_youtube_live(channel_ids):
 
 
 def fetch_youtube_channel_info(channel_ids):
-    """Возвращает { channel_id: {avatar_url, title, banner_url} }."""
+    """Возвращает { channel_id: {avatar_url, title, banner_url} } (кэш 10 мин)."""
     if not channel_ids:
         return {}
+    now = time.time()
+    cache_key = tuple(sorted(channel_ids))
+    if _cache['yt_info'] is not None and _cache.get('yt_info_key') == cache_key and now - _cache['yt_info_at'] < META_CACHE_TTL:
+        return _cache['yt_info']
+
     payload = _yt_get(YOUTUBE_CHANNELS_URL, {'part': 'snippet,brandingSettings', 'id': ','.join(channel_ids[:50])})
     result = {}
     for item in (payload or {}).get('items', []):
@@ -288,13 +308,21 @@ def fetch_youtube_channel_info(channel_ids):
             'title': item.get('snippet', {}).get('title', ''),
             'banner_url': f'{banner}=w1280-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj' if banner else '',
         }
+    _cache['yt_info'] = result
+    _cache['yt_info_key'] = cache_key
+    _cache['yt_info_at'] = now
     return result
 
 
 def fetch_youtube_last_video(channel_ids):
-    """Возвращает { channel_id: thumbnail_url } последнего загруженного видео (для офлайн-превью)."""
+    """Возвращает { channel_id: thumbnail_url } последнего загруженного видео (для офлайн-превью, кэш 10 мин)."""
     if not channel_ids or not get_youtube_key():
         return {}
+    now = time.time()
+    cache_key = tuple(sorted(channel_ids))
+    if _cache['yt_last_video'] is not None and _cache.get('yt_last_video_key') == cache_key and now - _cache['yt_last_video_at'] < META_CACHE_TTL:
+        return _cache['yt_last_video']
+
     result = {}
     for cid in channel_ids[:25]:
         payload = _yt_get(YOUTUBE_SEARCH_URL, {
@@ -305,6 +333,9 @@ def fetch_youtube_last_video(channel_ids):
             continue
         thumbs = items[0].get('snippet', {}).get('thumbnails', {})
         result[cid] = thumbs.get('high', {}).get('url', '') or thumbs.get('default', {}).get('url', '')
+    _cache['yt_last_video'] = result
+    _cache['yt_last_video_key'] = cache_key
+    _cache['yt_last_video_at'] = now
     return result
 
 

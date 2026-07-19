@@ -35,7 +35,7 @@ interface StreamersState {
   loading: boolean;
 }
 
-const POLL_INTERVAL = 15000;
+const POLL_INTERVAL = 30000;
 
 /**
  * Общее хранилище списка стримеров на всё приложение (module-level singleton).
