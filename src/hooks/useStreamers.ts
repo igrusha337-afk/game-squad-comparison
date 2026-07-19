@@ -35,13 +35,15 @@ interface StreamersState {
   loading: boolean;
 }
 
-const POLL_INTERVAL = 30000;
+const POLL_INTERVAL = 60000;
 
 /**
  * Общее хранилище списка стримеров на всё приложение (module-level singleton).
  * Опрос backend идёт ОДИН раз на весь сайт независимо от того, сколько
  * компонентов (шапка, сайдбар, каталог, страница "Стримеры") используют этот хук —
  * это критично для экономии вычислительного времени backend-функции.
+ * Пока вкладка сайта неактивна (свёрнута/в фоне), опрос останавливается —
+ * при возврате на вкладку данные обновляются мгновенно.
  */
 let state: StreamersState = { streamers: [], loading: true };
 let subscriberCount = 0;
@@ -62,19 +64,41 @@ async function load() {
   }
 }
 
+function startTimer() {
+  if (timer) return;
+  timer = setInterval(load, POLL_INTERVAL);
+}
+
+function stopTimer() {
+  if (!timer) return;
+  clearInterval(timer);
+  timer = null;
+}
+
+function handleVisibilityChange() {
+  if (subscriberCount === 0) return;
+  if (document.visibilityState === 'hidden') {
+    stopTimer();
+  } else {
+    load();
+    startTimer();
+  }
+}
+
 function subscribe(listener: () => void) {
   listeners.add(listener);
   subscriberCount++;
   if (subscriberCount === 1) {
     load();
-    timer = setInterval(load, POLL_INTERVAL);
+    if (document.visibilityState !== 'hidden') startTimer();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
   }
   return () => {
     listeners.delete(listener);
     subscriberCount--;
-    if (subscriberCount === 0 && timer) {
-      clearInterval(timer);
-      timer = null;
+    if (subscriberCount === 0) {
+      stopTimer();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     }
   };
 }
