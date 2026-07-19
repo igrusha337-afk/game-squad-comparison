@@ -117,36 +117,17 @@ def handler(event: dict, context) -> dict:
         conn = get_conn()
         try:
             with conn.cursor() as cur:
-                # Всего уникальных посетителей (по session_id или ip)
+                # Общие и периодные счётчики — одним запросом вместо пяти (FILTER экономит проходы по таблице)
                 cur.execute(
-                    f"SELECT COUNT(DISTINCT COALESCE(session_id, ip_address)) FROM {SCHEMA}.page_views"
+                    f"SELECT "
+                    f"COUNT(DISTINCT COALESCE(session_id, ip_address)), "
+                    f"COUNT(*), "
+                    f"COUNT(DISTINCT COALESCE(session_id, ip_address)) FILTER (WHERE visited_at >= current_date), "
+                    f"COUNT(DISTINCT COALESCE(session_id, ip_address)) FILTER (WHERE visited_at >= now() - interval '7 days'), "
+                    f"COUNT(DISTINCT COALESCE(session_id, ip_address)) FILTER (WHERE visited_at >= now() - interval '30 days') "
+                    f"FROM {SCHEMA}.page_views"
                 )
-                total_unique = cur.fetchone()[0]
-
-                # Всего просмотров
-                cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.page_views")
-                total_views = cur.fetchone()[0]
-
-                # За сегодня
-                cur.execute(
-                    f"SELECT COUNT(DISTINCT COALESCE(session_id, ip_address)) FROM {SCHEMA}.page_views "
-                    f"WHERE visited_at >= current_date"
-                )
-                today_unique = cur.fetchone()[0]
-
-                # За 7 дней
-                cur.execute(
-                    f"SELECT COUNT(DISTINCT COALESCE(session_id, ip_address)) FROM {SCHEMA}.page_views "
-                    f"WHERE visited_at >= now() - interval '7 days'"
-                )
-                week_unique = cur.fetchone()[0]
-
-                # За 30 дней
-                cur.execute(
-                    f"SELECT COUNT(DISTINCT COALESCE(session_id, ip_address)) FROM {SCHEMA}.page_views "
-                    f"WHERE visited_at >= now() - interval '30 days'"
-                )
-                month_unique = cur.fetchone()[0]
+                total_unique, total_views, today_unique, week_unique, month_unique = cur.fetchone()
 
                 # Посещений по дням за 30 дней
                 cur.execute(
