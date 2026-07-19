@@ -36,14 +36,20 @@ interface StreamersState {
 }
 
 const POLL_INTERVAL = 60000;
+// На мобильных экономим трафик и батарею сильнее — опрашиваем реже
+const MOBILE_POLL_INTERVAL = 120000;
+const isMobile = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
+const pollInterval = isMobile ? MOBILE_POLL_INTERVAL : POLL_INTERVAL;
 
 /**
  * Общее хранилище списка стримеров на всё приложение (module-level singleton).
  * Опрос backend идёт ОДИН раз на весь сайт независимо от того, сколько
  * компонентов (шапка, сайдбар, каталог, страница "Стримеры") используют этот хук —
  * это критично для экономии вычислительного времени backend-функции.
- * Пока вкладка сайта неактивна (свёрнута/в фоне), опрос останавливается —
- * при возврате на вкладку данные обновляются мгновенно.
+ * Пока вкладка сайта неактивна (свёрнута/в фоне) — опрос останавливается по
+ * visibilitychange, а на мобильных дополнительно по Page Lifecycle API
+ * (freeze/resume — браузер замораживает фоновые вкладки агрессивнее desktop).
+ * При возврате на вкладку данные обновляются мгновенно.
  */
 let state: StreamersState = { streamers: [], loading: true };
 let subscriberCount = 0;
@@ -66,7 +72,7 @@ async function load() {
 
 function startTimer() {
   if (timer) return;
-  timer = setInterval(load, POLL_INTERVAL);
+  timer = setInterval(load, pollInterval);
 }
 
 function stopTimer() {
@@ -85,6 +91,19 @@ function handleVisibilityChange() {
   }
 }
 
+// Page Lifecycle API: мобильные браузеры замораживают фоновые вкладки
+// (например при сворачивании приложения) — событие freeze приходит быстрее
+// и надёжнее, чем visibilitychange, а resume гарантирует пробуждение опроса.
+function handleFreeze() {
+  stopTimer();
+}
+
+function handleResume() {
+  if (subscriberCount === 0) return;
+  load();
+  startTimer();
+}
+
 function subscribe(listener: () => void) {
   listeners.add(listener);
   subscriberCount++;
@@ -92,6 +111,8 @@ function subscribe(listener: () => void) {
     load();
     if (document.visibilityState !== 'hidden') startTimer();
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('freeze', handleFreeze);
+    document.addEventListener('resume', handleResume);
   }
   return () => {
     listeners.delete(listener);
@@ -99,6 +120,8 @@ function subscribe(listener: () => void) {
     if (subscriberCount === 0) {
       stopTimer();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('freeze', handleFreeze);
+      document.removeEventListener('resume', handleResume);
     }
   };
 }
