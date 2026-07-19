@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSyncExternalStore } from 'react';
 import { streamersApi } from '@/lib/api';
 
 export interface StreamerPlatform {
@@ -30,33 +30,61 @@ export interface Streamer {
   platforms: StreamerPlatform[];
 }
 
+interface StreamersState {
+  streamers: Streamer[];
+  loading: boolean;
+}
+
 const POLL_INTERVAL = 15000;
 
 /**
- * Список стримеров сообщества с live-статусом, обновляется раз в 15 секунд.
- * Используется во всех виджетах (шапка, сайдбар, каталог, страница "Стримеры"),
- * чтобы не плодить параллельные опросы backend.
+ * Общее хранилище списка стримеров на всё приложение (module-level singleton).
+ * Опрос backend идёт ОДИН раз на весь сайт независимо от того, сколько
+ * компонентов (шапка, сайдбар, каталог, страница "Стримеры") используют этот хук —
+ * это критично для экономии вычислительного времени backend-функции.
  */
-export function useStreamers() {
-  const [streamers, setStreamers] = useState<Streamer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+let state: StreamersState = { streamers: [], loading: true };
+let subscriberCount = 0;
+let timer: ReturnType<typeof setInterval> | null = null;
+const listeners = new Set<() => void>();
 
-  const load = useCallback(async () => {
-    try {
-      const d = await streamersApi.list();
-      setStreamers(d.streamers || []);
-    } catch { /* ignore */ }
-    finally { setLoading(false); }
-  }, []);
+function setState(next: Partial<StreamersState>) {
+  state = { ...state, ...next };
+  listeners.forEach(l => l());
+}
 
-  useEffect(() => {
+async function load() {
+  try {
+    const d = await streamersApi.list();
+    setState({ streamers: d.streamers || [], loading: false });
+  } catch {
+    setState({ loading: false });
+  }
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  subscriberCount++;
+  if (subscriberCount === 1) {
     load();
-    timerRef.current = setInterval(load, POLL_INTERVAL);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [load]);
+    timer = setInterval(load, POLL_INTERVAL);
+  }
+  return () => {
+    listeners.delete(listener);
+    subscriberCount--;
+    if (subscriberCount === 0 && timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+  };
+}
 
+function getSnapshot() {
+  return state;
+}
+
+export function useStreamers() {
+  const { streamers, loading } = useSyncExternalStore(subscribe, getSnapshot);
   const liveStreamers = streamers.filter(s => s.is_live);
-
   return { streamers, liveStreamers, loading };
 }
