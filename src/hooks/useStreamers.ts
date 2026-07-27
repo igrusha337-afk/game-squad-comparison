@@ -35,6 +35,11 @@ interface StreamersState {
   loading: boolean;
 }
 
+// Временный рубильник: отслеживание стримеров отключено, чтобы не расходовать
+// вычислительное время backend-функции (она дёргает Twitch/YouTube API).
+// Поставь обратно true, когда потребуется включить функционал.
+const STREAMERS_ENABLED = false;
+
 const POLL_INTERVAL = 60000;
 // На мобильных экономим трафик и батарею сильнее — опрашиваем реже
 const MOBILE_POLL_INTERVAL = 120000;
@@ -105,6 +110,11 @@ function handleResume() {
 }
 
 function subscribe(listener: () => void) {
+  if (!STREAMERS_ENABLED) {
+    // Функционал отключён — не подписываемся и не опрашиваем backend.
+    if (state.loading) setState({ loading: false });
+    return () => {};
+  }
   listeners.add(listener);
   subscriberCount++;
   if (subscriberCount === 1) {
